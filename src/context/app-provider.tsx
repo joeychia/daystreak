@@ -11,6 +11,7 @@ interface AppContextType {
   user: User | null;
   loading: boolean;
   group: Group | null;
+  allGroups: Group[];
   users: User[];
   workouts: Workout[];
   signIn: (email: string, pass: string) => Promise<UserCredential>;
@@ -30,12 +31,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<Group | null>(null);
+  const [allGroups, setAllGroups] = useState<Group[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
+
+      const allGroupsQuery = query(collection(db, "groups"));
+      const allGroupsSnapshot = await getDocs(allGroupsQuery);
+      const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
+      setAllGroups(fetchedAllGroups);
+      
       if (firebaseUser) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -191,6 +199,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     group,
+    allGroups,
     users,
     workouts,
     signIn,

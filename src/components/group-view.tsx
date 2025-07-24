@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Share2 } from 'lucide-react';
+import { Share2, Users } from 'lucide-react';
 import { CalendarView } from './calendar-view';
 import type { User } from '@/lib/types';
+import { ScrollArea } from './ui/scroll-area';
 
 export function GroupView() {
   const { user, group, users, getWorkoutsForUser, getUserById } = useApp();
@@ -96,7 +97,7 @@ export function GroupView() {
 }
 
 function NoGroupView() {
-    const { createGroup } = useApp();
+    const { createGroup, allGroups, joinGroup } = useApp();
     const [open, setOpen] = useState(false);
     const [groupName, setGroupName] = useState("");
     const { toast } = useToast();
@@ -110,13 +111,18 @@ function NoGroupView() {
         toast({ title: `Group "${newGroup.name}" created!`, description: "You can now invite members." });
         setOpen(false);
     }
+    
+    const handleJoinGroup = async (groupId: string) => {
+        await joinGroup(groupId);
+        toast({ title: "Successfully joined group!" });
+    }
 
     return (
-        <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <Card className="w-full max-w-sm">
+        <div className="flex flex-col h-full text-center p-4">
+            <Card className="w-full max-w-sm mb-4">
                 <CardHeader>
-                    <CardTitle className="font-headline">Join a Group</CardTitle>
-                    <CardDescription>You're not in a group yet. Create one to start building a streak with friends!</CardDescription>
+                    <CardTitle className="font-headline">Create a Group</CardTitle>
+                    <CardDescription>Create a new group to start a streak with your friends.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Dialog open={open} onOpenChange={setOpen}>
@@ -140,7 +146,38 @@ function NoGroupView() {
                         </DialogContent>
                     </Dialog>
                 </CardContent>
-                <CardFooter>
+            </Card>
+
+            <Card className="w-full max-w-sm flex-1 flex flex-col">
+                <CardHeader>
+                    <CardTitle className="font-headline">Join an Existing Group</CardTitle>
+                    <CardDescription>Or join one of the groups below.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 p-0">
+                    <ScrollArea className="h-full">
+                        <div className="px-6 pb-4">
+                        {allGroups.length > 0 ? (
+                            <ul className="space-y-2">
+                                {allGroups.map(group => (
+                                    <li key={group.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                                        <div>
+                                            <p className="font-semibold text-left">{group.name}</p>
+                                            <p className="text-sm text-muted-foreground text-left flex items-center gap-1">
+                                                <Users className="w-3 h-3" />
+                                                {group.memberIds.length} members
+                                            </p>
+                                        </div>
+                                        <Button size="sm" onClick={() => handleJoinGroup(group.id)}>Join</Button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-muted-foreground">No groups available to join yet.</p>
+                        )}
+                        </div>
+                    </ScrollArea>
+                </CardContent>
+                 <CardFooter>
                     <p className="text-xs text-muted-foreground">If you have an invite link, open it in your browser to join a group.</p>
                 </CardFooter>
             </Card>
