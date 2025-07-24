@@ -39,17 +39,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
 
-      try {
-        const allGroupsQuery = query(collection(db, "groups"));
-        const allGroupsSnapshot = await getDocs(allGroupsQuery);
-        const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
-        setAllGroups(fetchedAllGroups);
-      } catch (error) {
-        console.warn("Could not fetch all groups, likely due to permissions for logged-out user.", error);
-        setAllGroups([]);
-      }
-      
       if (firebaseUser) {
+        // Fetch all groups only for logged in users
+        try {
+          const allGroupsQuery = query(collection(db, "groups"));
+          const allGroupsSnapshot = await getDocs(allGroupsQuery);
+          const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
+          setAllGroups(fetchedAllGroups);
+        } catch (error) {
+          console.warn("Could not fetch all groups, likely due to permissions for logged-out user.", error);
+          setAllGroups([]);
+        }
+        
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         
@@ -98,6 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setGroup(null);
         setUsers([]);
         setWorkouts([]);
+        setAllGroups([]);
       }
       setLoading(false);
     });
