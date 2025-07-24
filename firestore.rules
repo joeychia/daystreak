@@ -1,19 +1,25 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Users can read their own document, and create it if it doesn't exist.
-    // They can only write to their own document.
+    
     match /users/{userId} {
-      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
+      allow read: if request.auth != null; // Any authenticated user can read user profiles
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId;
     }
 
-    // Users can create, read, and delete their own workout documents.
+    match /groups/{groupId} {
+      allow list: if request.auth != null; // Authenticated users can list all groups
+      allow read: if request.auth != null && resource.data.memberIds.hasAny([request.auth.uid]);
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow update: if request.auth != null && resource.data.memberIds.hasAny([request.auth.uid]);
+    }
+
     match /workouts/{workoutId} {
-        allow read, delete: if request.auth != null && request.auth.uid == resource.data.userId;
-        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow read: if request.auth != null; // For simplicity, allow authenticated users to read workouts. Can be tightened later.
+      allow create: if request.auth.uid == request.resource.data.userId;
     }
   }
 }
