@@ -90,7 +90,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, [user?.id]);
+  }, []);
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
