@@ -36,7 +36,6 @@ export function CalendarView({ userId }: CalendarViewProps) {
         <CardContent className="flex justify-center">
           <Calendar
             mode="multiple"
-            selected={activityDates}
             className="p-0"
             components={{
                 DayContent: ({ date, ...props }) => {
