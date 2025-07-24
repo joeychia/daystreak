@@ -39,6 +39,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWorkouts([]);
     setGroup(null);
     setUsersInGroup([]);
+    setLoading(false);
   }, []);
 
   const ensureDefaultGroupExists = async () => {
@@ -57,64 +58,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return groupDocRef;
   }
 
+  // Handle auth state changes
   useEffect(() => {
-    let groupListener: Unsubscribe | undefined;
-    let workoutsListener: Unsubscribe | undefined;
-    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setLoading(true);
-      
-      if (groupListener) groupListener();
-      if (workoutsListener) workoutsListener();
-
       if (firebaseUser) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
-        
         if (userDoc.exists()) {
           setUser({ id: userDoc.id, ...userDoc.data() } as User);
         }
-        
-        const groupDocRef = await ensureDefaultGroupExists();
-
-        groupListener = onSnapshot(groupDocRef, async (groupDoc) => {
-            if (groupDoc.exists()) {
-                const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-                setGroup(groupData);
-
-                if (workoutsListener) workoutsListener();
-
-                if (groupData.memberIds.length > 0) {
-                    const usersQuery = query(collection(db, "users"), where('id', 'in', groupData.memberIds));
-                    const userDocs = await getDocs(usersQuery);
-                    const groupUsers = userDocs.docs.map(d => ({id: d.id, ...d.data()}) as User);
-                    setUsersInGroup(groupUsers);
-
-                    const workoutsQuery = query(collection(db, "workouts"), where('userId', 'in', groupData.memberIds));
-                    workoutsListener = onSnapshot(workoutsQuery, (snapshot) => {
-                      const groupWorkouts = snapshot.docs.map(d => ({...d.data(), id: d.id}) as Workout);
-                      setWorkouts(groupWorkouts);
-                    });
-
-                } else {
-                    setUsersInGroup([]);
-                    setWorkouts([]);
-                }
-            }
-        });
-
+        await ensureDefaultGroupExists();
       } else {
         clearAppState();
       }
       setLoading(false);
     });
-    
-    return () => {
-      unsubscribe();
-      if (groupListener) groupListener();
-      if (workoutsListener) workoutsListener();
-    };
+    return () => unsubscribe();
   }, [clearAppState]);
+
+  // Subscribe to group and user data
+  useEffect(() => {
+    if (!user) return;
+
+    const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
+    const groupListener = onSnapshot(groupDocRef, async (groupDoc) => {
+      if (groupDoc.exists()) {
+        const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+        setGroup(groupData);
+
+        if (groupData.memberIds && groupData.memberIds.length > 0) {
+          const usersQuery = query(collection(db, "users"), where('id', 'in', groupData.memberIds));
+          const userDocs = await getDocs(usersQuery);
+          const groupUsers = userDocs.docs.map(d => ({ id: d.id, ...d.data() }) as User);
+          setUsersInGroup(groupUsers);
+        } else {
+          setUsersInGroup([]);
+        }
+      }
+    });
+
+    return () => groupListener();
+  }, [user]);
+
+  // Subscribe to workout data for all users in the group
+  useEffect(() => {
+    if (!group || !group.memberIds || group.memberIds.length === 0) {
+      setWorkouts([]);
+      return;
+    }
+
+    const workoutsQuery = query(collection(db, "workouts"), where('userId', 'in', group.memberIds));
+    const workoutsListener = onSnapshot(workoutsQuery, (snapshot) => {
+      const groupWorkouts = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Workout);
+      setWorkouts(groupWorkouts);
+    }, (error) => {
+      console.error("Error fetching workouts:", error);
+      toast({
+        title: "Error",
+        description: "Could not load workout data.",
+        variant: "destructive"
+      });
+    });
+
+    return () => workoutsListener();
+  }, [group, toast]);
+
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
@@ -160,9 +168,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userId: user.id,
       date: formatISO(new Date()),
     };
-    // The onSnapshot listener will automatically update the UI.
-    // No need to optimistically update here anymore.
-    await addDoc(collection(db, "workouts"), newWorkout);
+    
+    // The onSnapshot listener will update from the database, but this provides instant UI feedback.
+    try {
+        const docRef = await addDoc(collection(db, "workouts"), newWorkout);
+        setWorkouts(prevWorkouts => [...prevWorkouts, {id: docRef.id, ...newWorkout}]);
+    } catch(error) {
+        console.error("Error logging workout:", error);
+        toast({
+            title: "Error",
+            description: "Could not save your workout. Please try again.",
+            variant: "destructive"
+        })
+    }
   };
 
   const value = {
