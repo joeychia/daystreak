@@ -36,13 +36,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        setLoading(true); // Start loading when auth state is confirmed
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
-        let userData;
+        
+        let userData: User;
         if (userDoc.exists()) {
           userData = { id: userDoc.id, ...userDoc.data() } as User;
         } else {
-           // Create user doc if it doesn't exist
            userData = {
             id: firebaseUser.uid,
             email: firebaseUser.email!,
@@ -53,7 +54,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         setUser(userData);
 
-        // Fetch group data right after setting user
         const groupsRef = collection(db, "groups");
         const q = query(groupsRef, where("memberIds", "array-contains", userData.id));
         const snapshot = await getDocs(q);
@@ -65,29 +65,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
             
             const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
             const usersSnapshot = await getDocs(usersQuery);
-            const groupUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
-            setUsers(groupUsers);
+            setUsers(usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[]);
 
             const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
             const workoutsSnapshot = await getDocs(workoutsQuery);
-            const groupWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-            setWorkouts(groupWorkouts);
+            setWorkouts(workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[]);
         } else {
             setGroup(null);
             setUsers([userData]);
             const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", userData.id));
             const workoutsSnapshot = await getDocs(workoutsQuery);
-            const userWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-            setWorkouts(userWorkouts);
+            setWorkouts(workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[]);
         }
-
+        setLoading(false); // Finish loading after all data is fetched
       } else {
         setUser(null);
         setGroup(null);
         setUsers([]);
         setWorkouts([]);
+        setLoading(false); // Finish loading for logged-out state
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
@@ -170,12 +167,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       memberIds: arrayUnion(user.id)
     });
     
-    // The useEffect will now handle re-fetching data when the user's group changes.
-    // We just need to update the local state to reflect the new membership immediately.
-    const updatedGroup = { ...groupToJoin, memberIds: [...groupToJoin.memberIds, user.id] };
-    setGroup(updatedGroup);
-
-    return updatedGroup;
+    // Trigger a re-fetch by updating a dummy state or letting the auth listener handle it
+    // Forcing a reload is a simple way to ensure all data is consistent
+    window.location.reload(); 
+    
+    return { ...groupToJoin, memberIds: [...groupToJoin.memberIds, user.id] };
   };
 
   const value = {
