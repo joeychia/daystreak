@@ -26,6 +26,17 @@ interface AppContextType {
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Helper to generate a random token
+const generateToken = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let token = '';
+    for (let i = 0; i < 24; i++) {
+        token += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return token;
+}
+
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,6 +177,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           name: firebaseUser.email!.split('@')[0],
           avatarUrl: `https://api.dicebear.com/8.x/big-smiles/svg?seed=${firebaseUser.uid}`,
           groupId: SINGLE_GROUP_ID,
+          completionToken: generateToken(),
         };
         await setDoc(doc(db, "users", firebaseUser.uid), newUser);
         // No longer need to add user to group document

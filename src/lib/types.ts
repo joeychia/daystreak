@@ -5,6 +5,7 @@ export interface User {
   phone?: string;
   avatarUrl?: string;
   groupId?: string;
+  completionToken?: string;
 }
 
 export interface Group {
