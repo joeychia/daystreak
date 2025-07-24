@@ -1,11 +1,11 @@
 'use client';
 
 import { useApp } from '@/hooks/use-app';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { calculateStreak } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Crown } from 'lucide-react';
-import { FlameSolidIcon } from './icons/flame-solid';
+import { FlameSolidIcon } from './icons';
 
 function GroupDetailsView() {
     const { group, usersInGroup, getActivitiesForUser } = useApp();

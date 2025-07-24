@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { FlameSolidIcon } from './flame-solid';
+import { FlameSolidIcon } from './';
 
 export function Logo({ streak, ...props }: React.SVGProps<SVGSVGElement> & { streak?: number }) {
   const showStreak = streak && streak > 0;

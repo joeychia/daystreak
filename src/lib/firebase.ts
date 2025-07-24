@@ -2,17 +2,15 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  projectId: "fitness-circle-v9lme",
-  appId: "1:477375716953:web:54346e4b29a8d60c8a5b48",
-  storageBucket: "fitness-circle-v9lme.firebasestorage.app",
-  apiKey: "AIzaSyAqi5ScFpSg3_W-ml2wygHOpW5kL9ozTPs",
-  authDomain: "fitness-circle-v9lme.firebaseapp.com",
-  messagingSenderId: "477375716953",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
 
 // Initialize Firebase
@@ -26,10 +24,8 @@ try {
     if (error.code == 'failed-precondition') {
         // Multiple tabs open, persistence can only be enabled
         // in one tab at a a time.
-        // ...
     } else if (error.code == 'unimplemented') {
         // The current browser does not support all of the
         // features required to enable persistence
-        // ...
     }
 }

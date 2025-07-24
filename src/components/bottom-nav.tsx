@@ -1,8 +1,8 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { GroupSolidIcon } from './icons/group-solid';
 import { SquarePen } from 'lucide-react';
+import { GroupSolidIcon } from './icons';
 
 interface BottomNavProps {
   activeView: string;
