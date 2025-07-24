@@ -40,7 +40,7 @@ export function MainAppShell() {
   const streak = calculateStreak(userActivities);
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-dvh flex-col bg-background">
       <header className="flex items-center justify-between p-4 border-b">
         <Logo streak={streak} />
         <div className="flex items-center gap-4">
