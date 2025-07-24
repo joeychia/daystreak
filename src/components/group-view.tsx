@@ -8,7 +8,7 @@ import { Crown } from 'lucide-react';
 import { FlameSolidIcon } from './icons';
 
 function GroupDetailsView() {
-    const { group, usersInGroup, getActivitiesForUser } = useApp();
+    const { user, group, usersInGroup, getActivitiesForUser } = useApp();
 
     if (!group) return <div className="p-4 text-center">Loading group...</div>;
 
@@ -39,7 +39,7 @@ function GroupDetailsView() {
                                 </Avatar>
                                 <div className="flex-1">
                                     <p className="font-semibold flex items-center gap-2">
-                                        {member.name}
+                                        {member.name} {user && member.id === user.id && '(you)'}
                                         {member.id === group.ownerId && <Crown className="w-4 h-4 text-yellow-500" title="Group Owner" />}
                                     </p>
                                 </div>
