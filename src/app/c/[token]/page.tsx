@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, use } from 'react';
 import { logActivityByToken } from '@/lib/actions';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -9,9 +10,10 @@ import { LoaderCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
-function CompletionPage({ params }: { params: { token: string } }) {
+function CompletionPage({ params: paramsPromise }: { params: Promise<{ token: string }> }) {
   const router = useRouter();
   const { toast } = useToast();
+  const params = use(paramsPromise);
 
   useEffect(() => {
     let isCancelled = false;
