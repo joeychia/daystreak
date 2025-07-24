@@ -53,6 +53,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         setUser(userData);
 
+        // Fetch group data right after setting user
+        const groupsRef = collection(db, "groups");
+        const q = query(groupsRef, where("memberIds", "array-contains", userData.id));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+            const groupDoc = snapshot.docs[0];
+            const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+            setGroup(groupData);
+            
+            const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
+            const usersSnapshot = await getDocs(usersQuery);
+            const groupUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
+            setUsers(groupUsers);
+
+            const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
+            const workoutsSnapshot = await getDocs(workoutsQuery);
+            const groupWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+            setWorkouts(groupWorkouts);
+        } else {
+            setGroup(null);
+            setUsers([userData]);
+            const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", userData.id));
+            const workoutsSnapshot = await getDocs(workoutsQuery);
+            const userWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+            setWorkouts(userWorkouts);
+        }
+
       } else {
         setUser(null);
         setGroup(null);
@@ -63,49 +91,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     return () => unsubscribe();
   }, []);
-  
-  useEffect(() => {
-    const fetchGroupData = async () => {
-        if (user?.id) {
-            const groupsRef = collection(db, "groups");
-            const q = query(groupsRef, where("memberIds", "array-contains", user.id));
-            const snapshot = await getDocs(q);
-
-            if (!snapshot.empty) {
-                const groupDoc = snapshot.docs[0];
-                const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-                setGroup(groupData);
-                
-                const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
-                const usersSnapshot = await getDocs(usersQuery);
-                const groupUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
-                setUsers(groupUsers);
-
-                const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
-                const workoutsSnapshot = await getDocs(workoutsQuery);
-                const groupWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-                setWorkouts(groupWorkouts);
-            } else {
-                setGroup(null);
-                setUsers(user ? [user] : []);
-                
-                if (user) {
-                    const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", user.id));
-                    const workoutsSnapshot = await getDocs(workoutsQuery);
-                    const userWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-                    setWorkouts(userWorkouts);
-                } else {
-                    setWorkouts([]);
-                }
-            }
-        }
-    }
-    
-    if (!loading) {
-      fetchGroupData();
-    }
-
-  }, [user, loading]);
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
@@ -166,6 +151,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       memberIds: [user.id]
     }
     setGroup(newGroup);
+    setUsers(prev => [...prev, user]); // Add self to users list
     return newGroup;
   };
 
@@ -184,9 +170,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
       memberIds: arrayUnion(user.id)
     });
 
-    const updatedGroup = { ...groupToJoin, memberIds: [...groupToJoin.memberIds, user.id] };
-    setGroup(updatedGroup);
-    return updatedGroup;
+    // Manually trigger a re-fetch of all data
+    setLoading(true);
+    const updatedUser = { ...user };
+    setUser(null); 
+    setTimeout(() => {
+      setUser(updatedUser);
+      setLoading(false);
+    }, 0);
+
+
+    return { ...groupToJoin, memberIds: [...groupToJoin.memberIds, user.id] };
   };
 
   const value = {
