@@ -15,7 +15,7 @@ interface CalendarViewProps {
 }
 
 function DayContent({ date, activeModifiers }: DayContentProps) {
-  const { getWorkoutsForUser, user: loggedInUser } = useApp();
+  const { getWorkoutsForUser, user: loggedInUser, hasUserCompletedWorkoutToday } = useApp();
   // This is a bit inefficient to call in a loop, but for the scope of this calendar it is acceptable.
   // For larger scale apps, consider moving this logic higher up.
   const workouts = getWorkoutsForUser(loggedInUser!.id);
@@ -24,7 +24,7 @@ function DayContent({ date, activeModifiers }: DayContentProps) {
   return (
     <div className={cn("relative h-full w-full flex items-center justify-center")}>
       {date.getDate()}
-      {isCompleted && <Check className="absolute top-1 right-1 h-3 w-3 text-white" />}
+      {isCompleted && <Check className="absolute bottom-1 right-1 h-3 w-3 text-green-600" />}
     </div>
   );
 }
