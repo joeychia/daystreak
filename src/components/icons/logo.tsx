@@ -4,11 +4,17 @@ import { FlameSolidIcon } from './flame-solid';
 
 export function Logo({ streak, ...props }: React.SVGProps<SVGSVGElement> & { streak?: number }) {
   const showStreak = streak && streak > 0;
+  const logoText = showStreak ? `${streak} Day Streak` : 'Day Streak';
+  // Adjust viewBox and width based on text length to prevent clipping
+  const textLength = logoText.length;
+  const svgWidth = 165 + (showStreak ? (String(streak).length -1) * 20 + 20 : 0);
+
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 220 50"
-      width="165"
+      viewBox={`0 0 ${svgWidth + 20} 50`}
+      width={svgWidth}
       height="37.5"
       {...props}
     >
@@ -18,33 +24,21 @@ export function Logo({ streak, ...props }: React.SVGProps<SVGSVGElement> & { str
           <stop offset="100%" style={{ stopColor: 'hsl(var(--accent))', stopOpacity: 1 }} />
         </linearGradient>
       </defs>
+      {showStreak && (
+         <g transform="translate(0, 8)">
+            <FlameSolidIcon style={{ color: 'hsl(var(--primary))' }} width="24" height="24" />
+          </g>
+      )}
       <text
-        x="0"
+        x={showStreak ? 30 : 0}
         y="35"
         fontFamily="'PT Sans', sans-serif"
         fontSize="32"
         fontWeight="bold"
         fill="url(#logo-gradient)"
       >
-        Day Streak
+        {logoText}
       </text>
-      {showStreak && (
-        <>
-          <g transform="translate(170, 8)">
-            <FlameSolidIcon style={{ color: 'hsl(var(--primary))' }} width="24" height="24" />
-          </g>
-          <text
-            x="198"
-            y="35"
-            fontFamily="'PT Sans', sans-serif"
-            fontSize="32"
-            fontWeight="bold"
-            fill="hsl(var(--primary))"
-          >
-            {streak}
-          </text>
-        </>
-      )}
     </svg>
   );
 }
