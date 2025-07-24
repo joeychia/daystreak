@@ -39,10 +39,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
 
-      const allGroupsQuery = query(collection(db, "groups"));
-      const allGroupsSnapshot = await getDocs(allGroupsQuery);
-      const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
-      setAllGroups(fetchedAllGroups);
+      try {
+        const allGroupsQuery = query(collection(db, "groups"));
+        const allGroupsSnapshot = await getDocs(allGroupsQuery);
+        const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
+        setAllGroups(fetchedAllGroups);
+      } catch (error) {
+        console.warn("Could not fetch all groups, likely due to permissions for logged-out user.", error);
+        setAllGroups([]);
+      }
       
       if (firebaseUser) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
