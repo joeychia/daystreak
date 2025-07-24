@@ -50,7 +50,7 @@ export function DashboardView({ onLogActivity, isCelebrating }: DashboardViewPro
           <Calendar
             mode="multiple"
             selected={completedDays}
-            className="p-0"
+            className="p-0 mb-[10px]"
             components={{
                 DayContent: (props) => <DayContent {...props} completedDays={completedDays} />,
             }}
