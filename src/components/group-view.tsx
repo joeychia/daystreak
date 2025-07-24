@@ -1,6 +1,6 @@
 'use client';
 import { useApp } from '@/hooks/use-app';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FlameSolidIcon } from './icons/flame-solid';
 import { calculateStreak } from '@/lib/utils';
