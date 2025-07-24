@@ -36,17 +36,17 @@ export function DashboardView({ onLogActivity, isCelebrating }: DashboardViewPro
   const completedDays = userActivities.map(activity => parseISO(activity.date));
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4">
           <CardTitle className="font-headline">Your Activity</CardTitle>
           <CardDescription>
             {completedToday
-              ? "Awesome work! You've completed your activity for today."
-              : "Log your activity for today to keep your streak alive!"}
+              ? "Great work! Logged for today."
+              : "Log your activity for today!"}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex justify-center">
+        <CardContent className="flex justify-center p-0">
           <Calendar
             mode="multiple"
             selected={completedDays}
@@ -58,10 +58,10 @@ export function DashboardView({ onLogActivity, isCelebrating }: DashboardViewPro
         </CardContent>
       </Card>
 
-      <div className="flex flex-col items-center justify-center pt-4">
+      <div className="flex flex-col items-center justify-center pt-2">
         <Button
             size="lg"
-            className="w-48 h-16 rounded-full text-lg font-bold shadow-lg bg-accent hover:bg-accent/90 disabled:bg-green-500 disabled:text-white disabled:opacity-100 transition-colors duration-300"
+            className="w-44 h-14 rounded-full text-lg font-bold shadow-lg bg-accent hover:bg-accent/90 disabled:bg-green-500 disabled:text-white disabled:opacity-100 transition-colors duration-300"
             onClick={onLogActivity}
             disabled={completedToday || isCelebrating}
         >
