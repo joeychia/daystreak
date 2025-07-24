@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useState, ReactNode, useMemo, useEffect } from 'react';
+import React, { createContext, useState, ReactNode, useEffect } from 'react';
 import type { User, Group, Workout } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, UserCredential } from "firebase/auth";
@@ -35,8 +35,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setLoading(true);
       if (firebaseUser) {
-        setLoading(true);
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         
@@ -80,14 +80,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
             setWorkouts(fetchedWorkouts);
         }
-        setLoading(false);
       } else {
         setUser(null);
         setGroup(null);
         setUsers([]);
         setWorkouts([]);
-        setLoading(false);
       }
+      setLoading(false);
     });
     
     return () => unsubscribe();
@@ -151,7 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       memberIds: [user.id]
     }
     setGroup(newGroup);
-    setUsers(prev => [...prev, user]);
+    setUsers([user]);
     return newGroup;
   };
 
