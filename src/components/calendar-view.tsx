@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Calendar } from '@/components/ui/calendar';
 import { isSameDay, parseISO } from 'date-fns';
 import { CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CalendarViewProps {
   userId?: string;
@@ -41,7 +42,7 @@ export function CalendarView({ userId }: CalendarViewProps) {
                     const isCompleted = activityDates.some(d => isSameDay(d, date));
                     return (
                         <div className="relative h-full w-full flex items-center justify-center">
-                            <span>{date.getDate()}</span>
+                            <span className={cn(isCompleted && "text-green-600 font-bold")}>{date.getDate()}</span>
                             {isCompleted && (
                                 <CheckCircle2 className="absolute bottom-0 right-0 h-3 w-3 text-green-500" />
                             )}
