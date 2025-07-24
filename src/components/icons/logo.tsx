@@ -1,11 +1,14 @@
-import React from 'react';
 
-export function Logo(props: React.SVGProps<SVGSVGElement>) {
+import React from 'react';
+import { FlameSolidIcon } from './flame-solid';
+
+export function Logo({ streak, ...props }: React.SVGProps<SVGSVGElement> & { streak?: number }) {
+  const showStreak = streak && streak > 0;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 170 50"
-      width="128"
+      viewBox="0 0 220 50"
+      width="165"
       height="37.5"
       {...props}
     >
@@ -25,6 +28,23 @@ export function Logo(props: React.SVGProps<SVGSVGElement>) {
       >
         Day Streak
       </text>
+      {showStreak && (
+        <>
+          <g transform="translate(170, 8)">
+            <FlameSolidIcon style={{ color: 'hsl(var(--primary))' }} width="24" height="24" />
+          </g>
+          <text
+            x="198"
+            y="35"
+            fontFamily="'PT Sans', sans-serif"
+            fontSize="32"
+            fontWeight="bold"
+            fill="hsl(var(--primary))"
+          >
+            {streak}
+          </text>
+        </>
+      )}
     </svg>
   );
 }
