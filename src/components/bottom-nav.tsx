@@ -1,19 +1,17 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { CalendarSolidIcon } from './icons/calendar-solid';
 import { GroupSolidIcon } from './icons/group-solid';
 import { SquarePen } from 'lucide-react';
 
 interface BottomNavProps {
   activeView: string;
-  setActiveView: (view: 'dashboard' | 'group' | 'calendar') => void;
+  setActiveView: (view: 'dashboard' | 'group') => void;
 }
 
 const navItems = [
   { id: 'dashboard', label: 'Today', icon: SquarePen },
   { id: 'group', label: 'Group', icon: GroupSolidIcon },
-  { id: 'calendar', label: 'Calendar', icon: CalendarSolidIcon },
 ];
 
 export function BottomNav({ activeView, setActiveView }: BottomNavProps) {

@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { DashboardView } from '@/components/dashboard-view';
-import { CalendarView } from '@/components/calendar-view';
 import { GroupView } from '@/components/group-view';
 import { useApp } from '@/hooks/use-app';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -11,15 +10,13 @@ import { LogOut } from 'lucide-react';
 import { Logo } from './icons/logo';
 
 export function MainAppShell() {
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'group'>('dashboard');
   const { user, logout } = useApp();
 
   const renderView = () => {
     switch (activeView) {
       case 'group':
         return <GroupView />;
-      case 'calendar':
-        return <CalendarView />;
       case 'dashboard':
       default:
         return <DashboardView />;
