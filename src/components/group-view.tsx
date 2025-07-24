@@ -21,13 +21,6 @@ function GroupDetailsView() {
 
     return (
         <div className="p-4 md:p-6 space-y-4">
-             <Card>
-                <CardHeader className="text-center">
-                    <CardTitle className="font-headline text-3xl">{group.name}</CardTitle>
-                    <CardDescription>Working out together, every day.</CardDescription>
-                </CardHeader>
-            </Card>
-
             <Card>
                 <CardHeader>
                     <CardTitle className="font-headline flex items-center gap-2">
