@@ -15,7 +15,7 @@ import { CalendarView } from './calendar-view';
 import type { User } from '@/lib/types';
 
 export function GroupView() {
-  const { user, group, users, getWorkoutsForUser, getUserById, createGroup } = useApp();
+  const { user, group, users, getWorkoutsForUser, getUserById } = useApp();
   const { toast } = useToast();
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
 
@@ -24,11 +24,10 @@ export function GroupView() {
   if (!group) {
     return <NoGroupView />;
   }
-
-  const leaderboard = group.memberIds
-    .map(memberId => {
-      const member = getUserById(memberId);
-      const workouts = getWorkoutsForUser(memberId);
+  
+  const leaderboard = users
+    .map(member => {
+      const workouts = getWorkoutsForUser(member.id);
       const streak = calculateStreak(workouts);
       return { ...member, streak };
     })
@@ -97,17 +96,17 @@ export function GroupView() {
 }
 
 function NoGroupView() {
-    const { createGroup, user } = useApp();
+    const { createGroup } = useApp();
     const [open, setOpen] = useState(false);
     const [groupName, setGroupName] = useState("");
     const { toast } = useToast();
 
-    const handleCreateGroup = () => {
+    const handleCreateGroup = async () => {
         if (!groupName.trim()) {
             toast({ title: "Group name cannot be empty", variant: "destructive" });
             return;
         }
-        const newGroup = createGroup(groupName);
+        const newGroup = await createGroup(groupName);
         toast({ title: `Group "${newGroup.name}" created!`, description: "You can now invite members." });
         setOpen(false);
     }

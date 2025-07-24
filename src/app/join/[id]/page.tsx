@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
 import type { Group } from '@/lib/types';
-import { GROUPS } from '@/lib/data';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { Logo } from '@/components/icons/logo';
 
 function JoinPageContent() {
@@ -13,23 +14,30 @@ function JoinPageContent() {
   const { user, joinGroup } = useApp();
   const router = useRouter();
   const [group, setGroup] = useState<Group | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setIsClient(true);
-    // In a real app, you'd fetch group data. Here we get it from mock data.
-    const groupData = GROUPS.find(g => g.id === id);
-    setGroup(groupData || null);
+    if (typeof id === 'string') {
+      const groupDocRef = doc(db, 'groups', id);
+      getDoc(groupDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          setGroup({ id: docSnap.id, ...docSnap.data() } as Group);
+        } else {
+          setGroup(null);
+        }
+        setLoading(false);
+      });
+    }
   }, [id]);
 
-  const handleJoin = () => {
+  const handleJoin = async () => {
     if (group) {
-      joinGroup(group.id);
+      await joinGroup(group.id);
       router.push('/');
     }
   };
-
-  if (!isClient) {
+  
+  if (loading) {
     return <div className="h-screen w-full bg-background flex items-center justify-center">Loading...</div>;
   }
   

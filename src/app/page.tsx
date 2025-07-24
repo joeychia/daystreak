@@ -4,18 +4,12 @@ import { AppProvider } from '@/context/app-provider';
 import { useApp } from '@/hooks/use-app';
 import { AuthScreen } from '@/components/auth-screen';
 import { MainAppShell } from '@/components/main-app-shell';
-import { useEffect, useState } from 'react';
 
 function FitnessCircleApp() {
-  const { user } = useApp();
-  const [isClient, setIsClient] = useState(false);
+  const { user, loading } = useApp();
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return null; // or a loading spinner
+  if (loading) {
+    return <div className="h-screen w-full bg-background flex items-center justify-center">Loading...</div>;
   }
   
   return user ? <MainAppShell /> : <AuthScreen />;

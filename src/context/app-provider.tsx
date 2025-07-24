@@ -2,19 +2,23 @@
 
 import React, { createContext, useState, ReactNode, useMemo, useEffect } from 'react';
 import type { User, Group, Workout } from '@/lib/types';
-import { USERS, GROUPS, WORKOUTS } from '@/lib/data';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { formatISO, isSameDay, parseISO } from 'date-fns';
 
 interface AppContextType {
   user: User | null;
-  users: User[];
+  loading: boolean;
   group: Group | null;
+  users: User[];
   workouts: Workout[];
-  login: (phone: string) => User | null;
+  sendOtp: (phone: string, recaptchaVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
+  verifyOtp: (confirmationResult: ConfirmationResult, otp: string) => Promise<void>;
   logout: () => void;
   logWorkout: () => void;
-  createGroup: (name: string) => Group;
-  joinGroup: (groupId: string) => Group | null;
+  createGroup: (name: string) => Promise<Group>;
+  joinGroup: (groupId: string) => Promise<Group | null>;
   getWorkoutsForUser: (userId: string) => Workout[];
   getUserById: (userId: string) => User | undefined;
   hasUserCompletedWorkoutToday: (userId: string) => boolean;
@@ -23,42 +27,97 @@ interface AppContextType {
 export const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [group, setGroup] = useState<Group | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Load initial data from "backend"
-    setUsers(USERS);
-    setGroups(GROUPS);
-    setWorkouts(WORKOUTS);
-
-    // Simulate keeping the user logged in
-    const loggedInUserId = localStorage.getItem('fitnessCircleUser');
-    if (loggedInUserId) {
-      const user = USERS.find(u => u.id === loggedInUserId);
-      if (user) {
-        setCurrentUser(user);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = { id: userDoc.id, ...userDoc.data() } as User;
+          setUser(userData);
+          // Fetch user's group and workouts after setting user
+        } else {
+          // This case is for when a user is new.
+          // The user document is created after OTP verification.
+          // We can set a minimal user object here.
+          setUser({ id: firebaseUser.uid, phone: firebaseUser.phoneNumber! });
+        }
+      } else {
+        setUser(null);
       }
-    }
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
+  
+  // Fetch group, members, and workouts when user is loaded or group changes
+  useEffect(() => {
+    if (user?.id) {
+      // Fetch user's group
+      const groupsRef = collection(db, "groups");
+      const q = query(groupsRef, where("memberIds", "array-contains", user.id));
+      getDocs(q).then(async (snapshot) => {
+        if (!snapshot.empty) {
+          const groupDoc = snapshot.docs[0];
+          const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+          setGroup(groupData);
+          
+          // Fetch all members of the group
+          const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
+          const usersSnapshot = await getDocs(usersQuery);
+          const groupUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
+          setUsers(groupUsers);
 
-  const login = (phone: string): User | null => {
-    const userToLogin = users.find(u => u.phone === phone);
-    if (userToLogin) {
-      setCurrentUser(userToLogin);
-      localStorage.setItem('fitnessCircleUser', userToLogin.id);
-      return userToLogin;
+          // Fetch all workouts for members of the group
+          const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
+          const workoutsSnapshot = await getDocs(workoutsQuery);
+          const groupWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+          setWorkouts(groupWorkouts);
+
+        } else {
+          setGroup(null);
+          setUsers([user]); // Only the current user is known
+          setWorkouts([]); // No group, so no group workouts
+        }
+      });
     }
-    // For this mock, we'll only allow existing users to log in.
-    // A real app would have a sign-up flow.
-    return null;
+  }, [user]);
+
+
+  const sendOtp = async (phone: string, recaptchaVerifier: RecaptchaVerifier) => {
+    return await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+  };
+
+  const verifyOtp = async (confirmationResult: ConfirmationResult, otp: string) => {
+    const credential = await confirmationResult.confirm(otp);
+    const firebaseUser = credential.user;
+
+    const userDocRef = doc(db, "users", firebaseUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      // New user, create a document for them.
+      const newUser: User = {
+        id: firebaseUser.uid,
+        phone: firebaseUser.phoneNumber!,
+        name: `User ${firebaseUser.uid.substring(0, 4)}`, // Default name
+        avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
+      };
+      await setDoc(userDocRef, newUser);
+      setUser(newUser);
+    } else {
+      setUser({ id: userDoc.id, ...userDoc.data() } as User);
+    }
   };
 
   const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('fitnessCircleUser');
+    auth.signOut();
   };
   
   const getUserById = (userId: string) => users.find(u => u.id === userId);
@@ -70,55 +129,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return workouts.some(w => w.userId === userId && isSameDay(parseISO(w.date), today));
   };
 
-  const logWorkout = () => {
-    if (!currentUser || hasUserCompletedWorkoutToday(currentUser.id)) return;
+  const logWorkout = async () => {
+    if (!user || hasUserCompletedWorkoutToday(user.id)) return;
 
-    const newWorkout: Workout = {
-      userId: currentUser.id,
+    const newWorkout: Omit<Workout, 'id'> = {
+      userId: user.id,
       date: formatISO(new Date()),
     };
-    setWorkouts(prevWorkouts => [...prevWorkouts, newWorkout]);
+    const docRef = await addDoc(collection(db, "workouts"), newWorkout);
+    setWorkouts(prevWorkouts => [...prevWorkouts, {id: docRef.id, ...newWorkout}]);
   };
   
-  const group = useMemo(() => {
-    if (!currentUser) return null;
-    return groups.find(g => g.memberIds.includes(currentUser.id)) || null;
-  }, [currentUser, groups]);
-
-  const createGroup = (name: string): Group => {
-    if (!currentUser) throw new Error("User must be logged in to create a group.");
+  const createGroup = async (name: string): Promise<Group> => {
+    if (!user) throw new Error("User must be logged in to create a group.");
     
-    const newGroup: Group = {
-      id: `group-${Date.now()}`,
+    const newGroupData = {
       name,
-      createdAt: formatISO(new Date()),
-      memberIds: [currentUser.id],
+      createdAt: serverTimestamp(),
+      memberIds: [user.id],
     };
-    setGroups(prev => [...prev, newGroup]);
+    const docRef = await addDoc(collection(db, "groups"), newGroupData);
+    const newGroup: Group = {
+      id: docRef.id,
+      name,
+      createdAt: new Date().toISOString(),
+      memberIds: [user.id]
+    }
+    setGroup(newGroup);
     return newGroup;
   };
 
-  const joinGroup = (groupId: string): Group | null => {
-    if (!currentUser) throw new Error("User must be logged in to join a group.");
+  const joinGroup = async (groupId: string): Promise<Group | null> => {
+    if (!user) throw new Error("User must be logged in to join a group.");
     
-    const groupToJoin = groups.find(g => g.id === groupId);
-    if (!groupToJoin) return null;
+    const groupDocRef = doc(db, "groups", groupId);
+    const groupDoc = await getDoc(groupDocRef);
+    if (!groupDoc.exists()) return null;
 
-    if (groupToJoin.memberIds.includes(currentUser.id)) return groupToJoin; // Already a member
+    const groupToJoin = { id: groupDoc.id, ...groupDoc.data() } as Group;
 
-    setGroups(prev => prev.map(g => 
-      g.id === groupId ? { ...g, memberIds: [...g.memberIds, currentUser.id] } : g
-    ));
+    if (groupToJoin.memberIds.includes(user.id)) return groupToJoin; // Already a member
 
-    return { ...groupToJoin, memberIds: [...groupToJoin.memberIds, currentUser.id] };
+    await updateDoc(groupDocRef, {
+      memberIds: arrayUnion(user.id)
+    });
+
+    const updatedGroup = { ...groupToJoin, memberIds: [...groupToJoin.memberIds, user.id] };
+    setGroup(updatedGroup);
+    return updatedGroup;
   };
 
   const value = {
-    user: currentUser,
-    users,
+    user,
+    loading,
     group,
+    users,
     workouts,
-    login,
+    sendOtp,
+    verifyOtp,
     logout,
     logWorkout,
     createGroup,
