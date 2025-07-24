@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -54,9 +55,13 @@ export function AuthScreen() {
       });
     } catch (error: any) {
       console.error("Error sending OTP:", error);
+      let description = "Failed to send verification code. Please try again.";
+      if (error.code === 'auth/invalid-phone-number') {
+        description = "Invalid phone number. Please enter it in E.164 format (e.g., +15551234567)."
+      }
       toast({
         title: "Error",
-        description: error.message || "Failed to send verification code. Please try again.",
+        description: description,
         variant: "destructive",
       });
     } finally {
