@@ -72,7 +72,7 @@ export function DashboardView() {
         </CardContent>
       </Card>
 
-      <div className="relative flex flex-col items-center justify-center pt-4">
+      <div className="flex flex-col items-center justify-center pt-4">
         <Button
             size="lg"
             className="w-48 h-16 rounded-full text-lg font-bold shadow-lg bg-accent hover:bg-accent/90 disabled:bg-green-500 disabled:text-white disabled:opacity-100 transition-colors duration-300"
@@ -87,10 +87,13 @@ export function DashboardView() {
                 "Crushed it!"
             )}
         </Button>
-        <div className="h-24 w-24">
-            {showCelebration && <CelebrationCheck />}
-        </div>
       </div>
+      
+      {showCelebration && (
+        <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <CelebrationCheck />
+        </div>
+      )}
     </div>
   );
 }
