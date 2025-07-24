@@ -34,88 +34,63 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   useEffect(() => {
-    console.log("AppProvider: Subscribing to onAuthStateChanged.");
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      console.log("AppProvider: onAuthStateChanged triggered.");
       if (firebaseUser) {
-        console.log(`AppProvider: User is authenticated with UID: ${firebaseUser.uid}. Starting data fetch.`);
         setLoading(true);
-        try {
-          const userDocRef = doc(db, "users", firebaseUser.uid);
-          const userDoc = await getDoc(userDocRef);
-          console.log(`AppProvider: Fetched user document. Exists: ${userDoc.exists()}`);
-          
-          let userData: User;
-          if (userDoc.exists()) {
-            userData = { id: userDoc.id, ...userDoc.data() } as User;
-          } else {
-            console.log("AppProvider: User document doesn't exist, creating a new one.");
-            userData = {
-              id: firebaseUser.uid,
-              email: firebaseUser.email!,
-              name: firebaseUser.email!.split('@')[0],
-              avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
-            };
-            await setDoc(userDocRef, userData);
-            console.log("AppProvider: New user document created.");
-          }
-          
-          console.log("AppProvider: Setting user state.", userData);
-          setUser(userData);
-
-          const groupsRef = collection(db, "groups");
-          const q = query(groupsRef, where("memberIds", "array-contains", userData.id));
-          const snapshot = await getDocs(q);
-          console.log(`AppProvider: Fetched groups. Found: ${!snapshot.empty}`);
-
-          if (!snapshot.empty) {
-              const groupDoc = snapshot.docs[0];
-              const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-              console.log("AppProvider: Setting group state.", groupData);
-              setGroup(groupData);
-              
-              const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
-              const usersSnapshot = await getDocs(usersQuery);
-              const fetchedUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
-              console.log("AppProvider: Setting users state.", fetchedUsers);
-              setUsers(fetchedUsers);
-
-              const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
-              const workoutsSnapshot = await getDocs(workoutsQuery);
-              const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-              console.log("AppProvider: Setting workouts state.", fetchedWorkouts);
-              setWorkouts(fetchedWorkouts);
-          } else {
-              console.log("AppProvider: User is not in a group. Setting group to null and fetching individual data.");
-              setGroup(null);
-              setUsers([userData]); // Only the current user
-              const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", userData.id));
-              const workoutsSnapshot = await getDocs(workoutsQuery);
-              const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-              console.log("AppProvider: Setting workouts state for individual user.", fetchedWorkouts);
-              setWorkouts(fetchedWorkouts);
-          }
-        } catch (error) {
-          console.error("AppProvider: Error during data fetching.", error);
-        } finally {
-          console.log("AppProvider: All data fetched, setting loading to false.");
-          setLoading(false);
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        let userData: User;
+        if (userDoc.exists()) {
+          userData = { id: userDoc.id, ...userDoc.data() } as User;
+        } else {
+          userData = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email!,
+            name: firebaseUser.email!.split('@')[0],
+            avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
+          };
+          await setDoc(userDocRef, userData);
         }
+        setUser(userData);
+
+        const groupsRef = collection(db, "groups");
+        const q = query(groupsRef, where("memberIds", "array-contains", userData.id));
+        const groupSnapshot = await getDocs(q);
+
+        if (!groupSnapshot.empty) {
+            const groupDoc = groupSnapshot.docs[0];
+            const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+            setGroup(groupData);
+            
+            const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
+            const usersSnapshot = await getDocs(usersQuery);
+            const fetchedUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
+            setUsers(fetchedUsers);
+
+            const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
+            const workoutsSnapshot = await getDocs(workoutsQuery);
+            const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+            setWorkouts(fetchedWorkouts);
+        } else {
+            setGroup(null);
+            setUsers([userData]);
+            const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", userData.id));
+            const workoutsSnapshot = await getDocs(workoutsQuery);
+            const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+            setWorkouts(fetchedWorkouts);
+        }
+        setLoading(false);
       } else {
-        console.log("AppProvider: User is not authenticated. Resetting state.");
         setUser(null);
         setGroup(null);
         setUsers([]);
         setWorkouts([]);
-        console.log("AppProvider: State reset, setting loading to false.");
         setLoading(false);
       }
     });
     
-    return () => {
-      console.log("AppProvider: Unsubscribing from onAuthStateChanged.");
-      unsubscribe();
-    }
+    return () => unsubscribe();
   }, []);
 
   const signIn = async (email: string, pass: string) => {
@@ -134,7 +109,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
     };
     await setDoc(userDocRef, newUser);
-    // Let the onAuthStateChanged listener handle setting the user state
   };
 
   const logout = () => {
