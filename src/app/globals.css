@@ -80,8 +80,8 @@
     stroke-dashoffset: 166;
     stroke-width: 2;
     stroke-miterlimit: 10;
-    stroke: hsl(var(--accent));
-    fill: hsl(var(--accent));
+    stroke: hsl(var(--primary));
+    fill: hsla(var(--primary), 0.5);
     animation: stroke-check .6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
   }
 
