@@ -90,7 +90,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user?.id]);
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
@@ -169,18 +169,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await updateDoc(groupDocRef, {
       memberIds: arrayUnion(user.id)
     });
+    
+    // The useEffect will now handle re-fetching data when the user's group changes.
+    // We just need to update the local state to reflect the new membership immediately.
+    const updatedGroup = { ...groupToJoin, memberIds: [...groupToJoin.memberIds, user.id] };
+    setGroup(updatedGroup);
 
-    // Manually trigger a re-fetch of all data
-    setLoading(true);
-    const updatedUser = { ...user };
-    setUser(null); 
-    setTimeout(() => {
-      setUser(updatedUser);
-      setLoading(false);
-    }, 0);
-
-
-    return { ...groupToJoin, memberIds: [...groupToJoin.memberIds, user.id] };
+    return updatedGroup;
   };
 
   const value = {
