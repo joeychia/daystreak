@@ -8,14 +8,14 @@ import { Crown } from 'lucide-react';
 import { FlameSolidIcon } from './icons/flame-solid';
 
 function GroupDetailsView() {
-    const { group, usersInGroup, getWorkoutsForUser } = useApp();
+    const { group, usersInGroup, getActivitiesForUser } = useApp();
 
     if (!group) return <div className="p-4 text-center">Loading group...</div>;
 
     const sortedMembers = usersInGroup
         .map(member => ({
             ...member,
-            streak: calculateStreak(getWorkoutsForUser(member.id)),
+            streak: calculateStreak(getActivitiesForUser(member.id)),
         }))
         .sort((a, b) => b.streak - a.streak);
 

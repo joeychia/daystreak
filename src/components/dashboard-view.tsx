@@ -10,8 +10,8 @@ import type { DayContentProps } from 'react-day-picker';
 
 
 function DayContent({ date }: DayContentProps) {
-  const { workouts } = useApp();
-  const isCompleted = workouts.some(workout => isSameDay(parseISO(workout.date), date));
+  const { activities } = useApp();
+  const isCompleted = activities.some(activity => isSameDay(parseISO(activity.date), date));
 
   return (
     <div className={cn("relative h-full w-full flex items-center justify-center")}>
@@ -27,12 +27,12 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ onLogActivity, isCelebrating }: DashboardViewProps) {
-  const { user, workouts, hasUserCompletedWorkoutToday } = useApp();
+  const { user, activities, hasUserCompletedActivityToday } = useApp();
 
   if (!user) return null;
   
-  const completedToday = hasUserCompletedWorkoutToday(user.id);
-  const completedDays = workouts.map(workout => parseISO(workout.date));
+  const completedToday = hasUserCompletedActivityToday(user.id);
+  const completedDays = activities.map(activity => parseISO(activity.date));
 
   return (
     <div className="p-4 md:p-6 space-y-6">

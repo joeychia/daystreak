@@ -15,7 +15,7 @@ export interface Group {
     memberIds: string[];
 }
 
-export interface Workout {
+export interface Activity {
   id: string;
   userId: string;
   date: string; // ISO 8601 format

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import type { User, Workout, Group } from '@/lib/types';
+import type { User, Activity, Group } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, UserCredential } from "firebase/auth";
 import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, onSnapshot, Unsubscribe, addDoc } from "firebase/firestore";
@@ -13,15 +13,15 @@ const SINGLE_GROUP_ID = "default-group";
 interface AppContextType {
   user: User | null;
   loading: boolean;
-  workouts: Workout[];
+  activities: Activity[];
   group: Group | null;
   usersInGroup: User[];
   signIn: (email: string, pass: string) => Promise<UserCredential>;
   signUp: (email: string, pass: string) => Promise<void>;
   logout: () => void;
-  logWorkout: () => void;
-  getWorkoutsForUser: (userId: string) => Workout[];
-  hasUserCompletedWorkoutToday: (userId: string) => boolean;
+  logActivity: () => void;
+  getActivitiesForUser: (userId: string) => Activity[];
+  hasUserCompletedActivityToday: (userId: string) => boolean;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -29,14 +29,14 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [group, setGroup] = useState<Group | null>(null);
   const [usersInGroup, setUsersInGroup] = useState<User[]>([]);
   const { toast } = useToast();
 
   const clearAppState = useCallback(() => {
     setUser(null);
-    setWorkouts([]);
+    setActivities([]);
     setGroup(null);
     setUsersInGroup([]);
     setLoading(false);
@@ -48,7 +48,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!groupDoc.exists()) {
       const newGroup: Group = {
         id: SINGLE_GROUP_ID,
-        name: 'Fitness Circle',
+        name: 'Day Streak Circle',
         createdAt: formatISO(new Date()),
         ownerId: 'system', // No single owner in this model
         memberIds: []
@@ -110,27 +110,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
-  // Subscribe to workout data for all users in the group
+  // Subscribe to activity data for all users in the group
   useEffect(() => {
     if (!group || !group.memberIds || group.memberIds.length === 0) {
-      setWorkouts([]);
+      setActivities([]);
       return;
     }
 
-    const workoutsQuery = query(collection(db, "workouts"), where('userId', 'in', group.memberIds));
-    const unsubscribeWorkouts = onSnapshot(workoutsQuery, (snapshot) => {
-      const groupWorkouts = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Workout);
-      setWorkouts(groupWorkouts);
+    const activitiesQuery = query(collection(db, "activities"), where('userId', 'in', group.memberIds));
+    const unsubscribeActivities = onSnapshot(activitiesQuery, (snapshot) => {
+      const groupActivities = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Activity);
+      setActivities(groupActivities);
     }, (error) => {
-      console.error("Error fetching workouts:", error);
+      console.error("Error fetching activities:", error);
       toast({
         title: "Error",
-        description: "Could not load workout data.",
+        description: "Could not load activity data.",
         variant: "destructive"
       });
     });
 
-    return () => unsubscribeWorkouts();
+    return () => unsubscribeActivities();
   }, [group, toast]);
 
 
@@ -164,30 +164,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     auth.signOut();
   };
   
-  const getWorkoutsForUser = (userId: string) => workouts.filter(w => w.userId === userId);
+  const getActivitiesForUser = (userId: string) => activities.filter(w => w.userId === userId);
 
-  const hasUserCompletedWorkoutToday = (userId: string) => {
+  const hasUserCompletedActivityToday = (userId: string) => {
     const today = new Date();
-    return workouts.some(w => w.userId === userId && isSameDay(parseISO(w.date), today));
+    return activities.some(w => w.userId === userId && isSameDay(parseISO(w.date), today));
   };
 
-  const logWorkout = async () => {
-    if (!user || hasUserCompletedWorkoutToday(user.id)) return;
+  const logActivity = async () => {
+    if (!user || hasUserCompletedActivityToday(user.id)) return;
 
-    const newWorkout: Omit<Workout, 'id'> = {
+    const newActivity: Omit<Activity, 'id'> = {
       userId: user.id,
       date: formatISO(new Date()),
     };
     
     // The onSnapshot listener will update from the database, but this provides instant UI feedback.
     try {
-        const docRef = await addDoc(collection(db, "workouts"), newWorkout);
-        setWorkouts(prevWorkouts => [...prevWorkouts, {id: docRef.id, ...newWorkout}]);
+        const docRef = await addDoc(collection(db, "activities"), newActivity);
+        setActivities(prevActivities => [...prevActivities, {id: docRef.id, ...newActivity}]);
     } catch(error) {
-        console.error("Error logging workout:", error);
+        console.error("Error logging activity:", error);
         toast({
             title: "Error",
-            description: "Could not save your workout. Please try again.",
+            description: "Could not save your activity. Please try again.",
             variant: "destructive"
         })
     }
@@ -196,15 +196,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     loading,
-    workouts,
+    activities,
     group,
     usersInGroup,
     signIn,
     signUp,
     logout,
-    logWorkout,
-    getWorkoutsForUser,
-    hasUserCompletedWorkoutToday,
+    logActivity,
+    getActivitiesForUser,
+    hasUserCompletedActivityToday,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

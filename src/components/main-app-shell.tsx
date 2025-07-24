@@ -15,11 +15,11 @@ import { CelebrationCheck } from './ui/celebration-check';
 export function MainAppShell() {
   const [activeView, setActiveView] = useState<'dashboard' | 'group'>('dashboard');
   const [showCelebration, setShowCelebration] = useState(false);
-  const { user, logout, logWorkout, getWorkoutsForUser, hasUserCompletedWorkoutToday } = useApp();
+  const { user, logout, logActivity, getActivitiesForUser, hasUserCompletedActivityToday } = useApp();
 
   const handleLogActivity = () => {
-    if (user && !hasUserCompletedWorkoutToday(user.id)) {
-      logWorkout();
+    if (user && !hasUserCompletedActivityToday(user.id)) {
+      logActivity();
       setShowCelebration(true);
       setTimeout(() => setShowCelebration(false), 2000); // Animation duration
     }
@@ -35,8 +35,8 @@ export function MainAppShell() {
     }
   };
 
-  const userWorkouts = user ? getWorkoutsForUser(user.id) : [];
-  const streak = calculateStreak(userWorkouts);
+  const userActivities = user ? getActivitiesForUser(user.id) : [];
+  const streak = calculateStreak(userActivities);
 
   return (
     <div className="flex h-screen flex-col bg-background">
