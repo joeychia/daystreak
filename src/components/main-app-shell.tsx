@@ -43,10 +43,13 @@ export function MainAppShell() {
       <header className="flex items-center justify-between p-4 border-b">
         <Logo streak={streak} />
         <div className="flex items-center gap-4">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.avatarUrl} alt={user?.name} />
-              <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-            </Avatar>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium hidden sm:inline-block">{user?.name}</span>
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+              </Avatar>
+            </div>
             <Button variant="ghost" size="icon" onClick={logout} className="h-8 w-8">
               <LogOut className="h-4 w-4" />
             </Button>
