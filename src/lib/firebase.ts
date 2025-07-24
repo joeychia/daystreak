@@ -2,7 +2,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore, memoryLocalCache, persistentLocalCache } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache, persistentLocalCache, memoryLruGarbageCollector } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -21,7 +21,7 @@ export const db = initializeFirestore(app, {
   localCache: typeof window === 'undefined'
     ? memoryLocalCache()
     : persistentLocalCache({
-        tabManager: 'SingleTab',
         cacheSizeBytes: 40 * 1024 * 1024, // 40 MB
+        garbageCollector: memoryLruGarbageCollector(),
       }),
 });
