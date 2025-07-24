@@ -58,7 +58,7 @@ export function DashboardView() {
                     <Check className="mr-2 h-6 w-6" /> Completed
                 </>
             ) : (
-                "Log Today's Activity"
+                "Crushed it!"
             )}
         </Button>
       </div>
