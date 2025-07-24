@@ -1,9 +1,9 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { DumbbellSolidIcon } from './icons/dumbbell-solid';
 import { GroupSolidIcon } from './icons/group-solid';
 import { CalendarSolidIcon } from './icons/calendar-solid';
+import { SquarePen } from 'lucide-react';
 
 interface BottomNavProps {
   activeView: string;
@@ -11,7 +11,7 @@ interface BottomNavProps {
 }
 
 const navItems = [
-  { id: 'dashboard', label: 'Workout', icon: DumbbellSolidIcon },
+  { id: 'dashboard', label: 'Today', icon: SquarePen },
   { id: 'group', label: 'Group', icon: GroupSolidIcon },
   { id: 'calendar', label: 'Calendar', icon: CalendarSolidIcon },
 ];

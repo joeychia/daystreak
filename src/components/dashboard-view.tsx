@@ -14,11 +14,11 @@ export function DashboardView() {
 
   if (!user) return null;
   
-  const userWorkouts = getWorkoutsForUser(user.id);
-  const streak = calculateStreak(userWorkouts);
+  const userActivities = getWorkoutsForUser(user.id);
+  const streak = calculateStreak(userActivities);
   const completedToday = hasUserCompletedWorkoutToday(user.id);
   
-  const handleLogWorkout = () => {
+  const handleLogActivity = () => {
     logWorkout();
     setShowCelebration(true);
     setTimeout(() => setShowCelebration(false), 2000); // Animation duration
@@ -37,11 +37,11 @@ export function DashboardView() {
       </Card>
 
       <div className="text-center space-y-4">
-        <h1 className="text-2xl font-bold font-headline">Ready to sweat, {user.name}?</h1>
+        <h1 className="text-2xl font-bold font-headline">Ready for today, {user.name}?</h1>
         <p className="text-muted-foreground">
           {completedToday
-            ? "Awesome work! You've completed your workout for today."
-            : "Log your workout for today to keep your streak alive!"}
+            ? "Awesome work! You've completed your activity for today."
+            : "Log your activity for today to keep your streak alive!"}
         </p>
       </div>
 
@@ -50,7 +50,7 @@ export function DashboardView() {
         <Button
             size="lg"
             className="w-48 h-16 rounded-full text-lg font-bold shadow-lg bg-accent hover:bg-accent/90 disabled:bg-primary disabled:text-primary-foreground disabled:opacity-100"
-            onClick={handleLogWorkout}
+            onClick={handleLogActivity}
             disabled={completedToday}
         >
             {completedToday ? (
@@ -58,7 +58,7 @@ export function DashboardView() {
                     <Check className="mr-2 h-6 w-6" /> Completed
                 </>
             ) : (
-                "Log Today's Workout"
+                "Log Today's Activity"
             )}
         </Button>
       </div>

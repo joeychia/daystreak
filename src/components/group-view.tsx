@@ -27,8 +27,8 @@ export function GroupView() {
   
   const leaderboard = users
     .map(member => {
-      const workouts = getWorkoutsForUser(member.id);
-      const streak = calculateStreak(workouts);
+      const activities = getWorkoutsForUser(member.id);
+      const streak = calculateStreak(activities);
       return { ...member, streak };
     })
     .sort((a, b) => b.streak - a.streak);
@@ -116,7 +116,7 @@ function NoGroupView() {
             <Card className="w-full max-w-sm">
                 <CardHeader>
                     <CardTitle className="font-headline">Join a Group</CardTitle>
-                    <CardDescription>You're not in a group yet. Create one to start working out with friends!</CardDescription>
+                    <CardDescription>You're not in a group yet. Create one to start building a streak with friends!</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Dialog open={open} onOpenChange={setOpen}>

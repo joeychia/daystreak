@@ -18,11 +18,11 @@ export function CalendarView({ userId }: CalendarViewProps) {
   
   if (!targetUser) return null;
 
-  const userWorkouts = getWorkoutsForUser(targetUser.id);
-  const workoutDates = userWorkouts.map(w => parseISO(w.date));
+  const userActivities = getWorkoutsForUser(targetUser.id);
+  const activityDates = userActivities.map(w => parseISO(w.date));
   
-  const cardTitle = userId ? `Workout Calendar` : 'Your Workout Calendar';
-  const cardDescription = userId ? `A look at ${targetUser.name}'s hard work.` : 'A look back at all your hard work.';
+  const cardTitle = userId ? `Activity Calendar` : 'Your Activity Calendar';
+  const cardDescription = userId ? `A look at ${targetUser.name}'s progress.` : 'A look back at your progress.';
 
   return (
     <div className="p-4 md:p-6">
@@ -34,11 +34,11 @@ export function CalendarView({ userId }: CalendarViewProps) {
         <CardContent className="flex justify-center">
           <Calendar
             mode="multiple"
-            selected={workoutDates}
+            selected={activityDates}
             className="p-0"
             components={{
                 DayContent: ({ date, ...props }) => {
-                    const isCompleted = workoutDates.some(d => isSameDay(d, date));
+                    const isCompleted = activityDates.some(d => isSameDay(d, date));
                     return (
                         <div className="relative h-full w-full flex items-center justify-center">
                             <span>{date.getDate()}</span>

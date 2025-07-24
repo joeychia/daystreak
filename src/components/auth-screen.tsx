@@ -53,7 +53,7 @@ export function AuthScreen() {
         <form onSubmit={handleSubmit}>
             <CardHeader>
               <CardTitle className="text-2xl font-headline">{authMode === 'signin' ? "Welcome Back" : "Create an Account"}</CardTitle>
-              <CardDescription>{authMode === 'signin' ? "Sign in to continue your fitness journey." : "Join us and start tracking your workouts."}</CardDescription>
+              <CardDescription>{authMode === 'signin' ? "Sign in to continue your streak." : "Join us and start building your streak."}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">

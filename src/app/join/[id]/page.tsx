@@ -65,7 +65,7 @@ function JoinPageContent() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="font-headline text-2xl">You're Invited!</CardTitle>
-          <CardDescription>Join the "{group.name}" group and start tracking your workouts together.</CardDescription>
+          <CardDescription>Join the "{group.name}" group and start building your streak together.</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-center text-sm text-muted-foreground">{group.memberIds.length} members are already in.</p>

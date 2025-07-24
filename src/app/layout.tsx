@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: 'Day Streak',
-  description: 'Workout with your friends and build a streak together.',
+  description: 'Build a streak of daily habits with your friends.',
 };
 
 export default function RootLayout({
