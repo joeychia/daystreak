@@ -32,6 +32,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [group, setGroup] = useState<Group | null>(null);
   const [usersInGroup, setUsersInGroup] = useState<User[]>([]);
+  const [memberIds, setMemberIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const clearAppState = useCallback(() => {
@@ -39,6 +40,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActivities([]);
     setGroup(null);
     setUsersInGroup([]);
+    setMemberIds([]);
     setLoading(false);
   }, []);
 
@@ -73,57 +75,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [clearAppState, toast]);
 
-  // Subscribe to group, users, and activities data
+  // Subscribe to group data
   useEffect(() => {
     if (!user) return;
 
-    let groupUnsubscribe: Unsubscribe | undefined;
-    let activitiesUnsubscribe: Unsubscribe | undefined;
-
     const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
     
-    groupUnsubscribe = onSnapshot(groupDocRef, async (groupDoc) => {
-      if (!groupDoc.exists()) {
-          setGroup(null);
-          setUsersInGroup([]);
-          return;
-      }
-      
-      const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-      setGroup(groupData);
-      
-      const { memberIds } = groupData;
-      if (memberIds && memberIds.length > 0) {
-        try {
-            const usersQuery = query(collection(db, "users"), where('id', 'in', memberIds));
-            const usersSnapshot = await getDocs(usersQuery);
-            const groupUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }) as User);
-            setUsersInGroup(groupUsers);
-
-            const activitiesQuery = query(collection(db, "activities"), where('userId', 'in', memberIds));
-            activitiesUnsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-                const groupActivities = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Activity);
-                setActivities(groupActivities);
-            });
-        } catch(error) {
-            console.error("Error fetching group data:", error);
-            toast({ title: "Error", description: "Could not load group data.", variant: "destructive" });
-        }
-
+    const groupUnsubscribe = onSnapshot(groupDocRef, (groupDoc) => {
+      if (groupDoc.exists()) {
+        const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+        setGroup(groupData);
+        setMemberIds(groupData.memberIds || []);
       } else {
-        setUsersInGroup([]);
-        setActivities([]);
+        setGroup(null);
+        setMemberIds([]);
       }
     }, (error) => {
         console.error("Error fetching group:", error);
         toast({ title: "Error", description: "Could not load group information.", variant: "destructive" });
     });
 
-    return () => {
-      if (groupUnsubscribe) groupUnsubscribe();
-      if (activitiesUnsubscribe) activitiesUnsubscribe();
-    };
+    return () => groupUnsubscribe();
   }, [user, toast]);
+  
+  // Subscribe to users and activities data based on group members
+  useEffect(() => {
+    if (!user || memberIds.length === 0) {
+        setUsersInGroup([]);
+        setActivities([]);
+        return;
+    }
+
+    let usersUnsubscribe: Unsubscribe | undefined;
+    let activitiesUnsubscribe: Unsubscribe | undefined;
+
+    try {
+        const usersQuery = query(collection(db, "users"), where('id', 'in', memberIds));
+        usersUnsubscribe = onSnapshot(usersQuery, (snapshot) => {
+            const groupUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }) as User);
+            setUsersInGroup(groupUsers);
+        }, (error) => {
+            console.error("Error fetching users:", error);
+            toast({ title: "Error", description: "Could not load user data.", variant: "destructive" });
+        });
+        
+        const activitiesQuery = query(collection(db, "activities"), where('userId', 'in', memberIds));
+        activitiesUnsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
+            const groupActivities = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Activity);
+            setActivities(groupActivities);
+        }, (error) => {
+            console.error("Error fetching activities:", error);
+            toast({ title: "Error", description: "Could not load activity data.", variant: "destructive" });
+        });
+
+    } catch (error) {
+        console.error("Error setting up data subscriptions:", error);
+        toast({ title: "Error", description: "There was a problem loading group data.", variant: "destructive" });
+    }
+
+    return () => {
+        if (usersUnsubscribe) usersUnsubscribe();
+        if (activitiesUnsubscribe) activitiesUnsubscribe();
+    }
+  }, [user, memberIds, toast]);
 
   const ensureDefaultGroupExists = async () => {
     const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
