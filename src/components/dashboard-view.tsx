@@ -1,3 +1,4 @@
+
 'use client';
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,16 +10,15 @@ import { isSameDay, parseISO } from 'date-fns';
 import type { DayContentProps } from 'react-day-picker';
 
 
-function DayContent({ date }: DayContentProps) {
-  const { activities } = useApp();
-  const isCompleted = activities.some(activity => isSameDay(parseISO(activity.date), date));
+function DayContent({ date, completedDays }: DayContentProps & { completedDays: Date[] }) {
+    const isCompleted = completedDays.some(completedDate => isSameDay(completedDate, date));
 
-  return (
-    <div className={cn("relative h-full w-full flex items-center justify-center")}>
-      {date.getDate()}
-      {isCompleted && <Check className="absolute bottom-1 right-1 h-3 w-3 text-green-600" />}
-    </div>
-  );
+    return (
+        <div className={cn("relative h-full w-full flex items-center justify-center")}>
+            {date.getDate()}
+            {isCompleted && <Check className="absolute bottom-1 right-1 h-3 w-3 text-green-600" />}
+        </div>
+    );
 }
 
 interface DashboardViewProps {
@@ -27,12 +27,13 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ onLogActivity, isCelebrating }: DashboardViewProps) {
-  const { user, activities, hasUserCompletedActivityToday } = useApp();
+  const { user, getActivitiesForUser, hasUserCompletedActivityToday } = useApp();
 
   if (!user) return null;
   
+  const userActivities = getActivitiesForUser(user.id);
   const completedToday = hasUserCompletedActivityToday(user.id);
-  const completedDays = activities.map(activity => parseISO(activity.date));
+  const completedDays = userActivities.map(activity => parseISO(activity.date));
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -51,7 +52,7 @@ export function DashboardView({ onLogActivity, isCelebrating }: DashboardViewPro
             selected={completedDays}
             className="p-0"
             components={{
-              DayContent: DayContent
+                DayContent: (props) => <DayContent {...props} completedDays={completedDays} />,
             }}
           />
         </CardContent>
