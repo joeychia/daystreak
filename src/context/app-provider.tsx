@@ -4,7 +4,7 @@ import React, { createContext, useState, ReactNode, useEffect, useCallback } fro
 import type { User, Workout, Group } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, UserCredential } from "firebase/auth";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, onSnapshot, Unsubscribe } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, onSnapshot, Unsubscribe, addDoc } from "firebase/firestore";
 import { formatISO, isSameDay, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -49,11 +49,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         id: SINGLE_GROUP_ID,
         name: 'Fitness Circle',
         createdAt: formatISO(new Date()),
-        ownerId: 'system',
+        ownerId: 'system', // No single owner in this model
         memberIds: []
       }
       await setDoc(groupDocRef, newGroup);
     }
+    return groupDocRef;
   }
 
   useEffect(() => {
@@ -68,39 +69,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         
-        let userData: User;
         if (userDoc.exists()) {
-          userData = { id: userDoc.id, ...userDoc.data() } as User;
-        } else {
-          // This is a new user, will be handled in signUp
-           setLoading(false);
-           return;
+          setUser({ id: userDoc.id, ...userDoc.data() } as User);
         }
-        setUser(userData);
         
-        // Subscribe to the single default group
-        groupListener = onSnapshot(doc(db, "groups", SINGLE_GROUP_ID), async (groupDoc) => {
+        // Everyone is in the same group.
+        const groupDocRef = await ensureDefaultGroupExists();
+
+        groupListener = onSnapshot(groupDocRef, async (groupDoc) => {
             if (groupDoc.exists()) {
-            const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-            setGroup(groupData);
+                const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+                setGroup(groupData);
 
-            if (groupData.memberIds.length > 0) {
-                // Fetch all users and workouts for the group
-                const userDocs = await getDocs(query(collection(db, "users"), where("id", "in", groupData.memberIds)));
-                const groupUsers = userDocs.docs.map(d => d.data() as User);
-                setUsersInGroup(groupUsers);
+                if (groupData.memberIds.length > 0) {
+                    const usersQuery = query(collection(db, "users"), where('id', 'in', groupData.memberIds));
+                    const workoutsQuery = query(collection(db, "workouts"), where('userId', 'in', groupData.memberIds));
 
-                const workoutDocs = await getDocs(query(collection(db, "workouts"), where("userId", "in", groupData.memberIds)));
-                const groupWorkouts = workoutDocs.docs.map(d => ({...d.data(), id: d.id}) as Workout);
-                setWorkouts(groupWorkouts);
-            } else {
-                setUsersInGroup([]);
-                setWorkouts([]);
-            }
-            
-            } else {
-                // The group may have been deleted, or not created yet.
-                await ensureDefaultGroupExists();
+                    const [userDocs, workoutDocs] = await Promise.all([getDocs(usersQuery), getDocs(workoutsQuery)]);
+                    
+                    const groupUsers = userDocs.docs.map(d => ({id: d.id, ...d.data()}) as User);
+                    setUsersInGroup(groupUsers);
+
+                    const groupWorkouts = workoutDocs.docs.map(d => ({...d.data(), id: d.id}) as Workout);
+                    setWorkouts(groupWorkouts);
+                } else {
+                    setUsersInGroup([]);
+                    setWorkouts([]);
+                }
             }
         });
 
@@ -114,14 +109,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubscribe();
       if (groupListener) groupListener();
     };
-  }, [clearAppState]);
+  }, [clearAppState, toast]);
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
   const signUp = async (email: string, pass: string) => {
-    await ensureDefaultGroupExists();
+    const groupDocRef = await ensureDefaultGroupExists();
     const credential = await createUserWithEmailAndPassword(auth, email, pass);
     const firebaseUser = credential.user;
 
@@ -134,9 +129,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       groupId: SINGLE_GROUP_ID,
     };
     await setDoc(userDocRef, newUser);
+    setUser(newUser);
     
     // Add user to the default group
-    const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
     await updateDoc(groupDocRef, {
         memberIds: arrayUnion(firebaseUser.uid)
     });
