@@ -72,7 +72,7 @@
   .celebration-check {
     stroke-width: 2;
     stroke-miterlimit: 10;
-    box-shadow: inset 0px 0px 0px hsl(var(--primary));
+    box-shadow: inset 0px 0px 0px hsl(var(--accent));
     animation: fill-check .4s ease-in-out .4s forwards, scale-check .3s ease-in-out .9s both;
   }
 
@@ -81,7 +81,7 @@
     stroke-dashoffset: 166;
     stroke-width: 2;
     stroke-miterlimit: 10;
-    stroke: hsl(var(--primary));
+    stroke: hsl(var(--accent));
     fill: none;
     animation: stroke-check .6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
   }
@@ -115,7 +115,7 @@
 
   @keyframes fill-check {
     100% {
-      box-shadow: inset 0px 0px 0px 30px hsl(var(--primary))
+      box-shadow: inset 0px 0px 0px 30px hsl(var(--accent))
     }
   }
 }

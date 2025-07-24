@@ -49,11 +49,11 @@ export function DashboardView() {
         {showCelebration && <CelebrationCheck />}
         <Button
             size="lg"
-            className="w-48 h-16 rounded-full text-lg font-bold shadow-lg bg-accent hover:bg-accent/90 disabled:bg-green-600 disabled:text-white disabled:opacity-100"
+            className="w-48 h-16 rounded-full text-lg font-bold shadow-lg bg-accent hover:bg-accent/90 disabled:bg-green-500 disabled:text-white disabled:opacity-100 transition-colors duration-300"
             onClick={handleLogActivity}
-            disabled={completedToday}
+            disabled={completedToday || showCelebration}
         >
-            {completedToday ? (
+            {completedToday && !showCelebration ? (
                 <>
                     <Check className="mr-2 h-6 w-6" /> Completed
                 </>
