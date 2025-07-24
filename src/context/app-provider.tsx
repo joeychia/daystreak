@@ -40,17 +40,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(true);
 
       if (firebaseUser) {
-        // Fetch all groups only for logged in users
-        try {
-          const allGroupsQuery = query(collection(db, "groups"));
-          const allGroupsSnapshot = await getDocs(allGroupsQuery);
-          const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
-          setAllGroups(fetchedAllGroups);
-        } catch (error) {
-          console.warn("Could not fetch all groups, likely due to permissions for logged-out user.", error);
-          setAllGroups([]);
-        }
-        
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         
@@ -67,6 +56,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           await setDoc(userDocRef, userData);
         }
         setUser(userData);
+        
+        try {
+          const allGroupsQuery = query(collection(db, "groups"));
+          const allGroupsSnapshot = await getDocs(allGroupsQuery);
+          const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
+          setAllGroups(fetchedAllGroups);
+        } catch (error) {
+          console.error("Could not fetch all groups:", error);
+          setAllGroups([]);
+        }
 
         const groupsRef = collection(db, "groups");
         const q = query(groupsRef, where("memberIds", "array-contains", userData.id));
@@ -77,10 +76,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
             setGroup(groupData);
             
-            const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
-            const usersSnapshot = await getDocs(usersQuery);
-            const fetchedUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
+            // To fix permissions, we can't query all users directly.
+            // A better long-term solution involves adjusting firestore rules to allow reads based on group membership.
+            // For now, let's fetch users one-by-one, which is less efficient but respects the rules.
+            const fetchedUsers: User[] = [];
+            for(const memberId of groupData.memberIds) {
+              const userRef = doc(db, 'users', memberId);
+              const userSnap = await getDoc(userRef);
+              if (userSnap.exists()) {
+                 fetchedUsers.push({ id: userSnap.id, ...userSnap.data() } as User);
+              }
+            }
             setUsers(fetchedUsers);
+
 
             const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
             const workoutsSnapshot = await getDocs(workoutsQuery);
@@ -187,9 +195,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const groupSnapshot = await getDoc(doc(db, "groups", groupId));
     const updatedGroup = { id: groupSnapshot.id, ...groupSnapshot.data() } as Group;
 
-    const usersQuery = query(collection(db, "users"), where("id", "in", updatedGroup.memberIds));
-    const usersSnapshot = await getDocs(usersQuery);
-    const fetchedUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
+    const fetchedUsers: User[] = [];
+    for(const memberId of updatedGroup.memberIds) {
+        const userRef = doc(db, 'users', memberId);
+        // We assume the user can read their own document and the rules will allow fetching others.
+        // If rules are strict, this might need a cloud function to gather user data.
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            fetchedUsers.push({ id: userSnap.id, ...userSnap.data() } as User);
+        }
+    }
 
     const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", updatedGroup.memberIds));
     const workoutsSnapshot = await getDocs(workoutsQuery);

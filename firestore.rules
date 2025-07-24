@@ -3,26 +3,36 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read/write their own document.
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+  
+    function isGroupMember(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds.hasAny([request.auth.uid]);
     }
 
-    // Anyone can see the list of groups and individual group info.
+    match /users/{userId} {
+      // Allow a user to read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Allow a user to read another user's profile if they are in the same group.
+      // This requires checking all groups, which is not directly possible in security rules.
+      // A better approach is to check if the requesting user is a member of any group the requested user is in.
+      // For simplicity here, we'll assume a user is only in one group and check that.
+      // A more robust solution might involve a "groups" subcollection on the user document.
+      allow read: if request.auth != null && exists(/databases/$(database)/documents/groups/$(getUserData().groupId)) && isGroupMember(getUserData().groupId);
+
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
     match /groups/{groupId} {
-      allow get, list: if true;
-      // Users must be authenticated to create a group.
+      allow read: if true; // Anyone can see group info to join
       allow create: if request.auth != null;
-      // Users must be authenticated to update a group (e.g. join).
-      allow update: if request.auth != null;
+      allow update: if request.auth != null && isGroupMember(groupId);
     }
     
-    // Authenticated users can create workouts for themselves.
     match /workouts/{workoutId} {
+      // Allow reading workouts if the user is a member of the group the workout's user belongs to.
+      // This is a simplification. This assumes a user is in only one group.
+      allow read: if request.auth != null && isGroupMember(get(/databases/$(database)/documents/users/$(resource.data.userId)).data.groupId);
       allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      // Users can only read workouts belonging to users in their group.
-      // This is a simplified rule; a more robust solution would check against the group's memberIds.
-      allow list, get: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
     }
   }
 }
