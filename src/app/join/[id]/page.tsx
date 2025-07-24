@@ -1,6 +1,7 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
-import { AppProvider, useApp } from '@/context/app-provider';
+import { AppProvider } from '@/context/app-provider';
+import { useApp } from '@/hooks/use-app';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
