@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { calculateStreak, cn } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 import { CelebrationCheck } from './ui/celebration-check';
 import { Calendar } from '@/components/ui/calendar';
@@ -24,13 +24,11 @@ function DayContent({ date }: DayContentProps) {
 }
 
 export function DashboardView() {
-  const { user, workouts, getWorkoutsForUser, logWorkout, hasUserCompletedWorkoutToday } = useApp();
+  const { user, workouts, logWorkout, hasUserCompletedWorkoutToday } = useApp();
   const [showCelebration, setShowCelebration] = useState(false);
 
   if (!user) return null;
   
-  const userActivities = getWorkoutsForUser(user.id);
-  const streak = calculateStreak(userActivities);
   const completedToday = hasUserCompletedWorkoutToday(user.id);
   const completedDays = workouts.map(workout => parseISO(workout.date));
   
@@ -42,15 +40,6 @@ export function DashboardView() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <Card className="bg-primary/10 border-primary/20">
-        <CardContent className="p-6 flex items-center justify-center text-center">
-          <div>
-            <p className="text-sm font-medium text-primary">Day Streak</p>
-            <p className="text-4xl font-bold font-headline text-primary">{streak}</p>
-          </div>
-        </CardContent>
-      </Card>
-      
       <Card>
         <CardHeader>
           <CardTitle className="font-headline">Your Activity</CardTitle>
