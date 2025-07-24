@@ -4,31 +4,24 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users:
-    // - Anyone can create a user document for themselves.
-    // - Authenticated users can read any user document (for group display).
-    // - Users can only update their own document.
+    // Users can read all user profiles and the single group document
+    // if they are authenticated.
     match /users/{userId} {
+      allow read: if request.auth != null;
       allow create: if request.auth.uid == userId;
-      allow read: if request.auth != null;
-      allow update: if request.auth.uid == userId;
     }
 
-    // Groups:
-    // - Only one group exists, so no one can create or delete groups.
-    // - Any authenticated user can read the single default group.
     match /groups/{groupId} {
-      allow read: if request.auth != null && groupId == 'default-group';
-      allow create, update, delete: if false;
+      allow read: if request.auth != null;
+      // Allow system to create the default group. For user-based creation,
+      // you would check if request.auth.uid == resource.data.ownerId
+      allow write: if request.auth != null; 
     }
 
-    // Workouts:
-    // - Users can create a workout for themselves.
-    // - Any authenticated user can read any workout (for calendar/leaderboard).
-    match /workouts/{workoutId} {
-      allow create: if request.auth.uid == request.resource.data.userId;
+    // Users can read all activities for their group and create their own.
+    match /activities/{activityId} {
       allow read: if request.auth != null;
-      allow update, delete: if false;
+      allow create: if request.auth.uid == request.resource.data.userId;
     }
   }
 }
