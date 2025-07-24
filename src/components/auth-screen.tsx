@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,150 +9,88 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useApp } from '@/hooks/use-app';
 import { useToast } from "@/hooks/use-toast"
 import { Logo } from './icons/logo';
-import { auth } from '@/lib/firebase';
-import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
-
-declare global {
-  interface Window {
-    recaptchaVerifier?: RecaptchaVerifier;
-    confirmationResult?: ConfirmationResult;
-  }
-}
 
 export function AuthScreen() {
-  const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { sendOtp, verifyOtp } = useApp();
+  const { signIn, signUp } = useApp();
   const { toast } = useToast()
 
-  useEffect(() => {
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-      'callback': (response: any) => {
-        // reCAPTCHA solved, allow signInWithPhoneNumber.
-      }
-    });
-
-    return () => {
-      window.recaptchaVerifier?.clear();
-    };
-  }, []);
-
-
-  const handlePhoneSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!window.recaptchaVerifier) return;
     setIsSubmitting(true);
     try {
-      const confirmationResult = await sendOtp(phone, window.recaptchaVerifier);
-      window.confirmationResult = confirmationResult;
-      setStep('otp');
-      toast({
-          title: "Code Sent!",
-          description: "We've sent a verification code to your phone.",
-      });
-    } catch (error: any) {
-      console.error("Error sending OTP:", error);
-      let description = "Failed to send verification code. Please try again.";
-      if (error.code === 'auth/invalid-phone-number') {
-        description = "Invalid phone number. Please enter it in E.164 format (e.g., +15551234567)."
+      if (authMode === 'signin') {
+        await signIn(email, password);
+      } else {
+        await signUp(email, password);
       }
+      // On successful sign-in/sign-up, the onAuthStateChanged listener in AppProvider will handle setting the user.
+    } catch (error: any) {
+      console.error(`Error during ${authMode}:`, error);
       toast({
-        title: "Error",
-        description: description,
+        title: "Authentication Failed",
+        description: error.message || "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
         setIsSubmitting(false);
     }
   };
-
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!window.confirmationResult) return;
-    setIsSubmitting(true);
-
-    try {
-        await verifyOtp(window.confirmationResult, otp);
-        // On successful verification, the onAuthStateChanged listener in AppProvider will handle setting the user.
-    } catch (error: any) {
-        console.error("Error verifying OTP:", error);
-        toast({
-            title: "Verification Failed",
-            description: "The code you entered is incorrect. Please try again.",
-            variant: "destructive",
-        })
-    } finally {
-        setIsSubmitting(false);
-    }
-  };
+  
+  const toggleAuthMode = () => {
+    setAuthMode(prev => prev === 'signin' ? 'signup' : 'signin');
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div id="recaptcha-container"></div>
        <div className="absolute top-10">
           <Logo />
        </div>
       <Card className="w-full max-w-sm">
-        {step === 'phone' ? (
-          <form onSubmit={handlePhoneSubmit}>
+        <form onSubmit={handleSubmit}>
             <CardHeader>
-              <CardTitle className="text-2xl font-headline">Welcome</CardTitle>
-              <CardDescription>Enter your phone number to sign in or create an account.</CardDescription>
+              <CardTitle className="text-2xl font-headline">{authMode === 'signin' ? "Welcome Back" : "Create an Account"}</CardTitle>
+              <CardDescription>{authMode === 'signin' ? "Sign in to continue your fitness journey." : "Join us and start tracking your workouts."}</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+1 555 555 5555"
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
                   required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  autoComplete="tel"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
                   disabled={isSubmitting}
                 />
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex-col gap-4">
               <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isSubmitting}>
-                {isSubmitting ? "Sending..." : "Send Code"}
-                </Button>
-            </CardFooter>
-          </form>
-        ) : (
-          <form onSubmit={handleOtpSubmit}>
-            <CardHeader>
-              <CardTitle className="text-2xl font-headline">Enter Code</CardTitle>
-              <CardDescription>We sent a verification code to {phone}.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="otp">Verification Code</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  required
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  autoComplete="one-time-code"
-                  disabled={isSubmitting}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-2">
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Verifying..." : "Verify & Sign In"}
+                {isSubmitting ? "Processing..." : (authMode === 'signin' ? "Sign In" : "Sign Up")}
               </Button>
-              <Button variant="link" size="sm" onClick={() => setStep('phone')} disabled={isSubmitting}>Use a different number</Button>
+              <Button variant="link" size="sm" type="button" onClick={toggleAuthMode} disabled={isSubmitting}>
+                {authMode === 'signin' ? "Don't have an account? Sign Up" : "Already have an account? Sign In"}
+              </Button>
             </CardFooter>
           </form>
-        )}
       </Card>
     </div>
   );

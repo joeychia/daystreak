@@ -3,7 +3,7 @@
 import React, { createContext, useState, ReactNode, useMemo, useEffect } from 'react';
 import type { User, Group, Workout } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, UserCredential } from "firebase/auth";
 import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { formatISO, isSameDay, parseISO } from 'date-fns';
 
@@ -13,8 +13,8 @@ interface AppContextType {
   group: Group | null;
   users: User[];
   workouts: Workout[];
-  sendOtp: (phone: string, recaptchaVerifier: RecaptchaVerifier) => Promise<ConfirmationResult>;
-  verifyOtp: (confirmationResult: ConfirmationResult, otp: string) => Promise<void>;
+  signIn: (email: string, pass: string) => Promise<UserCredential>;
+  signUp: (email: string, pass: string) => Promise<void>;
   logout: () => void;
   logWorkout: () => void;
   createGroup: (name: string) => Promise<Group>;
@@ -41,12 +41,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (userDoc.exists()) {
           const userData = { id: userDoc.id, ...userDoc.data() } as User;
           setUser(userData);
-          // Fetch user's group and workouts after setting user
         } else {
-          // This case is for when a user is new.
-          // The user document is created after OTP verification.
-          // We can set a minimal user object here.
-          setUser({ id: firebaseUser.uid, phone: firebaseUser.phoneNumber! });
+          // This case can happen if user record in auth exists but not in firestore.
+          // We can create it here, or rely on the signup flow to create it.
+           const newUser: User = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email!,
+            name: `User ${firebaseUser.uid.substring(0, 4)}`, // Default name
+            avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
+          };
+          await setDoc(userDocRef, newUser);
+          setUser(newUser);
         }
       } else {
         setUser(null);
@@ -56,10 +61,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
   
-  // Fetch group, members, and workouts when user is loaded or group changes
   useEffect(() => {
     if (user?.id) {
-      // Fetch user's group
       const groupsRef = collection(db, "groups");
       const q = query(groupsRef, where("memberIds", "array-contains", user.id));
       getDocs(q).then(async (snapshot) => {
@@ -68,13 +71,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
           setGroup(groupData);
           
-          // Fetch all members of the group
           const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
           const usersSnapshot = await getDocs(usersQuery);
           const groupUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
           setUsers(groupUsers);
 
-          // Fetch all workouts for members of the group
           const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
           const workoutsSnapshot = await getDocs(workoutsQuery);
           const groupWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
@@ -82,38 +83,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         } else {
           setGroup(null);
-          setUsers([user]); // Only the current user is known
-          setWorkouts([]); // No group, so no group workouts
+          user && setUsers([user]);
+          setWorkouts([]); 
         }
       });
+    } else {
+        setGroup(null);
+        setUsers([]);
+        setWorkouts([]);
     }
   }, [user]);
 
-
-  const sendOtp = async (phone: string, recaptchaVerifier: RecaptchaVerifier) => {
-    return await signInWithPhoneNumber(auth, phone, recaptchaVerifier);
+  const signIn = async (email: string, pass: string) => {
+    return signInWithEmailAndPassword(auth, email, pass);
   };
-
-  const verifyOtp = async (confirmationResult: ConfirmationResult, otp: string) => {
-    const credential = await confirmationResult.confirm(otp);
+  
+  const signUp = async (email: string, pass: string) => {
+    const credential = await createUserWithEmailAndPassword(auth, email, pass);
     const firebaseUser = credential.user;
 
     const userDocRef = doc(db, "users", firebaseUser.uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) {
-      // New user, create a document for them.
-      const newUser: User = {
-        id: firebaseUser.uid,
-        phone: firebaseUser.phoneNumber!,
-        name: `User ${firebaseUser.uid.substring(0, 4)}`, // Default name
-        avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
-      };
-      await setDoc(userDocRef, newUser);
-      setUser(newUser);
-    } else {
-      setUser({ id: userDoc.id, ...userDoc.data() } as User);
-    }
+    const newUser: User = {
+      id: firebaseUser.uid,
+      email: firebaseUser.email!,
+      name: `User ${firebaseUser.uid.substring(0, 4)}`, // Default name
+      avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
+    };
+    await setDoc(userDocRef, newUser);
+    setUser(newUser);
   };
 
   const logout = () => {
@@ -185,8 +182,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     group,
     users,
     workouts,
-    sendOtp,
-    verifyOtp,
+    signIn,
+    signUp,
     logout,
     logWorkout,
     createGroup,
