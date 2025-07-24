@@ -47,7 +47,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
            const newUser: User = {
             id: firebaseUser.uid,
             email: firebaseUser.email!,
-            name: `User ${firebaseUser.uid.substring(0, 4)}`, // Default name
+            name: firebaseUser.email!.split('@')[0],
             avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
           };
           await setDoc(userDocRef, newUser);
@@ -106,7 +106,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const newUser: User = {
       id: firebaseUser.uid,
       email: firebaseUser.email!,
-      name: `User ${firebaseUser.uid.substring(0, 4)}`, // Default name
+      name: firebaseUser.email!.split('@')[0],
       avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
     };
     await setDoc(userDocRef, newUser);
