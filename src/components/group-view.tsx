@@ -2,7 +2,7 @@
 
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { calculateStreak } from '@/lib/utils';
+import { calculateStreak, cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Crown } from 'lucide-react';
 import { FlameSolidIcon } from './icons';
@@ -31,7 +31,13 @@ function GroupDetailsView() {
                 <CardContent>
                     <ul className="space-y-3">
                         {sortedMembers.map((member, index) => (
-                            <li key={member.id} className="flex items-center gap-4 p-2 rounded-lg bg-background hover:bg-muted">
+                            <li 
+                                key={member.id} 
+                                className={cn(
+                                    "flex items-center gap-4 p-2 rounded-lg bg-background hover:bg-muted",
+                                    user && member.id === user.id && "border-2 border-solid border-primary"
+                                )}
+                            >
                                 <span className="font-bold text-lg w-6 text-center">{index + 1}</span>
                                 <Avatar>
                                     <AvatarImage src={member.avatarUrl} alt={member.name} />
