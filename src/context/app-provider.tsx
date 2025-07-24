@@ -125,7 +125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: firebaseUser.uid,
       email: firebaseUser.email!,
       name: firebaseUser.email!.split('@')[0],
-      avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
+      avatarUrl: `https://api.dicebear.com/8.x/big-smiles/svg?seed=${firebaseUser.uid}`,
       groupId: SINGLE_GROUP_ID,
     };
     await setDoc(userDocRef, newUser);
