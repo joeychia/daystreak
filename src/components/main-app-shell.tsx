@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { BottomNav } from '@/components/bottom-nav';
 import { DashboardView } from '@/components/dashboard-view';
 import { CalendarView } from '@/components/calendar-view';
+import { GroupView } from '@/components/group-view';
 import { useApp } from '@/hooks/use-app';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
@@ -15,6 +16,8 @@ export function MainAppShell() {
 
   const renderView = () => {
     switch (activeView) {
+      case 'group':
+        return <GroupView />;
       case 'calendar':
         return <CalendarView />;
       case 'dashboard':
