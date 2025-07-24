@@ -38,23 +38,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
+        let userData;
         if (userDoc.exists()) {
-          const userData = { id: userDoc.id, ...userDoc.data() } as User;
-          setUser(userData);
+          userData = { id: userDoc.id, ...userDoc.data() } as User;
         } else {
-          // This case can happen if user record in auth exists but not in firestore.
-          // We can create it here, or rely on the signup flow to create it.
-           const newUser: User = {
+           // Create user doc if it doesn't exist
+           userData = {
             id: firebaseUser.uid,
             email: firebaseUser.email!,
             name: firebaseUser.email!.split('@')[0],
             avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
           };
-          await setDoc(userDocRef, newUser);
-          setUser(newUser);
+          await setDoc(userDocRef, userData);
         }
+        setUser(userData);
+
       } else {
         setUser(null);
+        setGroup(null);
+        setUsers([]);
+        setWorkouts([]);
       }
       setLoading(false);
     });
@@ -62,37 +65,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   
   useEffect(() => {
-    if (user?.id) {
-      const groupsRef = collection(db, "groups");
-      const q = query(groupsRef, where("memberIds", "array-contains", user.id));
-      getDocs(q).then(async (snapshot) => {
-        if (!snapshot.empty) {
-          const groupDoc = snapshot.docs[0];
-          const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-          setGroup(groupData);
-          
-          const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
-          const usersSnapshot = await getDocs(usersQuery);
-          const groupUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
-          setUsers(groupUsers);
+    const fetchGroupData = async () => {
+        if (user?.id) {
+            const groupsRef = collection(db, "groups");
+            const q = query(groupsRef, where("memberIds", "array-contains", user.id));
+            const snapshot = await getDocs(q);
 
-          const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
-          const workoutsSnapshot = await getDocs(workoutsQuery);
-          const groupWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-          setWorkouts(groupWorkouts);
+            if (!snapshot.empty) {
+                const groupDoc = snapshot.docs[0];
+                const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+                setGroup(groupData);
+                
+                const usersQuery = query(collection(db, "users"), where("id", "in", groupData.memberIds));
+                const usersSnapshot = await getDocs(usersQuery);
+                const groupUsers = usersSnapshot.docs.map(d => ({...d.data(), id: d.id})) as User[];
+                setUsers(groupUsers);
 
-        } else {
-          setGroup(null);
-          user && setUsers([user]);
-          setWorkouts([]); 
+                const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
+                const workoutsSnapshot = await getDocs(workoutsQuery);
+                const groupWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+                setWorkouts(groupWorkouts);
+            } else {
+                setGroup(null);
+                setUsers(user ? [user] : []);
+                
+                if (user) {
+                    const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", user.id));
+                    const workoutsSnapshot = await getDocs(workoutsQuery);
+                    const userWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+                    setWorkouts(userWorkouts);
+                } else {
+                    setWorkouts([]);
+                }
+            }
         }
-      });
-    } else {
-        setGroup(null);
-        setUsers([]);
-        setWorkouts([]);
     }
-  }, [user]);
+    
+    if (!loading) {
+      fetchGroupData();
+    }
+
+  }, [user, loading]);
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
