@@ -65,7 +65,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-          setUser({ id: userDoc.id, ...userDoc.data() } as User);
+          const userData = { id: userDoc.id, ...userDoc.data() } as User;
+          setUser(userData);
+           // Ensure user is in the group, helpful for legacy users.
+          if (!userData.groupId) {
+            const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
+            await updateDoc(userDocRef, { groupId: SINGLE_GROUP_ID });
+            await updateDoc(groupDocRef, { memberIds: arrayUnion(firebaseUser.uid) });
+          }
         }
         await ensureDefaultGroupExists();
       } else {
@@ -81,23 +88,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
-    const groupListener = onSnapshot(groupDocRef, async (groupDoc) => {
+    const unsubscribeGroup = onSnapshot(groupDocRef, async (groupDoc) => {
       if (groupDoc.exists()) {
         const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
         setGroup(groupData);
 
         if (groupData.memberIds && groupData.memberIds.length > 0) {
+          // Fetch all users in the group
           const usersQuery = query(collection(db, "users"), where('id', 'in', groupData.memberIds));
-          const userDocs = await getDocs(usersQuery);
-          const groupUsers = userDocs.docs.map(d => ({ id: d.id, ...d.data() }) as User);
+          const usersSnapshot = await getDocs(usersQuery);
+          const groupUsers = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }) as User);
           setUsersInGroup(groupUsers);
         } else {
           setUsersInGroup([]);
         }
       }
     });
-
-    return () => groupListener();
+    
+    return () => {
+      unsubscribeGroup();
+    };
   }, [user]);
 
   // Subscribe to workout data for all users in the group
@@ -108,7 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     const workoutsQuery = query(collection(db, "workouts"), where('userId', 'in', group.memberIds));
-    const workoutsListener = onSnapshot(workoutsQuery, (snapshot) => {
+    const unsubscribeWorkouts = onSnapshot(workoutsQuery, (snapshot) => {
       const groupWorkouts = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Workout);
       setWorkouts(groupWorkouts);
     }, (error) => {
@@ -120,7 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     });
 
-    return () => workoutsListener();
+    return () => unsubscribeWorkouts();
   }, [group, toast]);
 
 
@@ -142,7 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       groupId: SINGLE_GROUP_ID,
     };
     await setDoc(userDocRef, newUser);
-    setUser(newUser);
+    // The user state will be set by the onAuthStateChanged listener.
     
     // Add user to the default group
     await updateDoc(groupDocRef, {

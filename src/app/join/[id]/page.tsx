@@ -1,22 +1,7 @@
-export interface User {
-  id: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  avatarUrl?: string;
-  groupId?: string;
-}
+import type { User, Group, Workout } from '@/lib/types';
 
-export interface Group {
-    id: string;
-    name: string;
-    createdAt: string; // ISO 8601 format
-    ownerId: string;
-    memberIds: string[];
-}
-
-export interface Workout {
-  id: string;
-  userId: string;
-  date: string; // ISO 8601 format
+// Note: This file is currently not in use and is a placeholder for a future feature 
+// for joining specific groups via a link. The core types are imported here for reference.
+export default function JoinPage() {
+    return null;
 }
