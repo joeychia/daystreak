@@ -76,9 +76,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
             setGroup(groupData);
             
-            // To fix permissions, we can't query all users directly.
-            // A better long-term solution involves adjusting firestore rules to allow reads based on group membership.
-            // For now, let's fetch users one-by-one, which is less efficient but respects the rules.
             const fetchedUsers: User[] = [];
             for(const memberId of groupData.memberIds) {
               const userRef = doc(db, 'users', memberId);
@@ -198,8 +195,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const fetchedUsers: User[] = [];
     for(const memberId of updatedGroup.memberIds) {
         const userRef = doc(db, 'users', memberId);
-        // We assume the user can read their own document and the rules will allow fetching others.
-        // If rules are strict, this might need a cloud function to gather user data.
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
             fetchedUsers.push({ id: userSnap.id, ...userSnap.data() } as User);
