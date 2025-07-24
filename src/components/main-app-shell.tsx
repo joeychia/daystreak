@@ -11,6 +11,7 @@ import { LogOut } from 'lucide-react';
 import { Logo } from './icons/logo';
 import { calculateStreak } from '@/lib/utils';
 import { CelebrationCheck } from './ui/celebration-check';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 
 export function MainAppShell() {
   const [activeView, setActiveView] = useState<'dashboard' | 'group'>('dashboard');
@@ -43,16 +44,23 @@ export function MainAppShell() {
       <header className="flex items-center justify-between p-4 border-b">
         <Logo streak={streak} />
         <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium hidden sm:inline-block">{user?.name}</span>
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={user?.avatarUrl} alt={user?.name} />
-                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
-              </Avatar>
-            </div>
-            <Button variant="ghost" size="icon" onClick={logout} className="h-8 w-8">
-              <LogOut className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-2 h-10 w-auto px-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user?.avatarUrl} alt={user?.name} />
+                    <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium hidden sm:inline-block">{user?.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </header>
       <main className="flex-1 overflow-y-auto pb-20">{renderView()}</main>
