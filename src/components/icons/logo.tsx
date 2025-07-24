@@ -7,13 +7,13 @@ export function Logo({ streak, ...props }: React.SVGProps<SVGSVGElement> & { str
   const logoText = showStreak ? `${streak} Day Streak` : 'Day Streak';
   // Adjust viewBox and width based on text length to prevent clipping
   const textLength = logoText.length;
-  const svgWidth = 165 + (showStreak ? (String(streak).length -1) * 20 + 20 : 0);
+  const svgWidth = 165 + (showStreak ? (String(streak).length -1) * 10 + 40 : 0);
 
 
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox={`0 0 ${svgWidth + 20} 50`}
+      viewBox={`0 0 ${svgWidth} 50`}
       width={svgWidth}
       height="37.5"
       {...props}
@@ -30,7 +30,7 @@ export function Logo({ streak, ...props }: React.SVGProps<SVGSVGElement> & { str
           </g>
       )}
       <text
-        x={showStreak ? 30 : 0}
+        x={showStreak ? 28 : 0}
         y="35"
         fontFamily="'PT Sans', sans-serif"
         fontSize="32"
