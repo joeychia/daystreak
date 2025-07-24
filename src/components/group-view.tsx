@@ -79,12 +79,14 @@ export function GroupView() {
                     </div>
                   </li>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{member.name}'s Calendar</DialogTitle>
-                  </DialogHeader>
-                  <CalendarView userId={member.id} />
-                </DialogContent>
+                {selectedMember && selectedMember.id === member.id && (
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{member.name}'s Calendar</DialogTitle>
+                    </DialogHeader>
+                    <CalendarView userId={member.id} />
+                  </DialogContent>
+                )}
               </Dialog>
             ))}
           </ul>
