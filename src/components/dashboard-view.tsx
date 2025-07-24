@@ -1,10 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { calculateStreak } from '@/lib/utils';
-import { FlameSolidIcon } from './icons/flame-solid';
 import { Check } from 'lucide-react';
 import { CelebrationCheck } from './ui/celebration-check';
 
@@ -27,12 +26,11 @@ export function DashboardView() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <Card className="bg-primary/10 border-primary/20">
-        <CardContent className="p-6 flex items-center justify-between">
+        <CardContent className="p-6 flex items-center justify-center text-center">
           <div>
             <p className="text-sm font-medium text-primary">Day Streak</p>
             <p className="text-4xl font-bold font-headline text-primary">{streak}</p>
           </div>
-          <FlameSolidIcon className="w-16 h-16 text-primary opacity-80" />
         </CardContent>
       </Card>
 
