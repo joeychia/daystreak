@@ -17,7 +17,7 @@ function getPodiumClass(rank: number) {
     case 3:
       return 'bg-orange-400/20 border-orange-500';
     default:
-      return 'bg-background hover:bg-muted';
+      return 'bg-background hover:bg-muted border-border';
   }
 }
 
@@ -56,13 +56,15 @@ function GroupDetailsView() {
                         {sortedMembers.map((member, index) => {
                             const rank = index + 1;
                             const isPodium = rank <= 3;
+                            const isCurrentUser = user && member.id === user.id;
+
                             return (
                                 <li 
                                     key={member.id} 
                                     className={cn(
                                         "flex items-center gap-4 p-3 rounded-lg transition-all border-2",
                                         getPodiumClass(rank),
-                                        user && member.id === user.id && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                                        isCurrentUser && "ring-2 ring-primary ring-offset-2 ring-offset-background border-transparent"
                                     )}
                                 >
                                     <div className="flex items-center gap-3 w-12">
