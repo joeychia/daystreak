@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useApp } from '@/hooks/use-app';
@@ -28,13 +29,13 @@ function GroupDetailsView() {
                         Leaderboard
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                     <ul className="space-y-3">
                         {sortedMembers.map((member, index) => (
                             <li 
                                 key={member.id} 
                                 className={cn(
-                                    "flex items-center gap-4 p-2 rounded-lg bg-background hover:bg-muted",
+                                    "flex items-center gap-4 p-3 rounded-lg bg-background hover:bg-muted",
                                     user && member.id === user.id && "border-2 border-solid border-primary"
                                 )}
                             >

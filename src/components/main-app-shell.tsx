@@ -46,12 +46,12 @@ export function MainAppShell() {
         <div className="flex items-center gap-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2 h-10 w-auto px-2">
+                <Button variant="ghost" className="flex items-center gap-2 h-10 w-auto p-2">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user?.avatarUrl} alt={user?.name} />
                     <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium hidden sm:inline-block">{user?.name}</span>
+                   <span className="text-sm font-medium hidden sm:inline-block">{user?.name}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
