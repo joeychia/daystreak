@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useApp } from '@/hooks/use-app';
@@ -41,10 +42,13 @@ export function CalendarView({ userId }: CalendarViewProps) {
                 DayContent: ({ date, ...props }) => {
                     const isCompleted = activityDates.some(d => isSameDay(d, date));
                     return (
-                        <div className="relative h-full w-full flex items-center justify-center">
-                            <span className={cn(isCompleted && "text-green-600 font-bold")}>{date.getDate()}</span>
+                        <div className={cn(
+                            "relative h-8 w-8 flex items-center justify-center rounded-full",
+                            isCompleted && "bg-primary/20"
+                        )}>
+                            <span className={cn(isCompleted && "font-bold text-primary")}>{date.getDate()}</span>
                             {isCompleted && (
-                                <CheckCircle2 className="absolute bottom-0 right-0 h-3 w-3 text-green-500" />
+                                <CheckCircle2 className="absolute -bottom-1 -right-1 h-4 w-4 text-primary bg-background rounded-full" />
                             )}
                         </div>
                     );
@@ -57,7 +61,11 @@ export function CalendarView({ userId }: CalendarViewProps) {
                     fontWeight: 'normal',
                 },
                  day: {
-                    position: 'relative',
+                    height: '2.5rem',
+                    width: '2.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                  }
             }}
           />
