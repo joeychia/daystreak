@@ -10,18 +10,28 @@ import { Button } from './ui/button';
 import { LogOut } from 'lucide-react';
 import { Logo } from './icons/logo';
 import { calculateStreak } from '@/lib/utils';
+import { CelebrationCheck } from './ui/celebration-check';
 
 export function MainAppShell() {
   const [activeView, setActiveView] = useState<'dashboard' | 'group'>('dashboard');
-  const { user, logout, getWorkoutsForUser } = useApp();
+  const [showCelebration, setShowCelebration] = useState(false);
+  const { user, logout, logWorkout, getWorkoutsForUser, hasUserCompletedWorkoutToday } = useApp();
 
+  const handleLogActivity = () => {
+    if (user && !hasUserCompletedWorkoutToday(user.id)) {
+      logWorkout();
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 2000); // Animation duration
+    }
+  };
+  
   const renderView = () => {
     switch (activeView) {
       case 'group':
         return <GroupView />;
       case 'dashboard':
       default:
-        return <DashboardView />;
+        return <DashboardView onLogActivity={handleLogActivity} isCelebrating={showCelebration} />;
     }
   };
 
@@ -44,6 +54,12 @@ export function MainAppShell() {
       </header>
       <main className="flex-1 overflow-y-auto pb-20">{renderView()}</main>
       <BottomNav activeView={activeView} setActiveView={setActiveView} />
+
+      {showCelebration && (
+        <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <CelebrationCheck />
+        </div>
+      )}
     </div>
   );
 }

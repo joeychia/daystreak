@@ -1,11 +1,9 @@
 'use client';
-import { useState } from 'react';
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
-import { CelebrationCheck } from './ui/celebration-check';
 import { Calendar } from '@/components/ui/calendar';
 import { isSameDay, parseISO } from 'date-fns';
 import type { DayContentProps } from 'react-day-picker';
@@ -23,20 +21,18 @@ function DayContent({ date }: DayContentProps) {
   );
 }
 
-export function DashboardView() {
-  const { user, workouts, logWorkout, hasUserCompletedWorkoutToday } = useApp();
-  const [showCelebration, setShowCelebration] = useState(false);
+interface DashboardViewProps {
+  onLogActivity: () => void;
+  isCelebrating: boolean;
+}
+
+export function DashboardView({ onLogActivity, isCelebrating }: DashboardViewProps) {
+  const { user, workouts, hasUserCompletedWorkoutToday } = useApp();
 
   if (!user) return null;
   
   const completedToday = hasUserCompletedWorkoutToday(user.id);
   const completedDays = workouts.map(workout => parseISO(workout.date));
-  
-  const handleLogActivity = () => {
-    logWorkout();
-    setShowCelebration(true);
-    setTimeout(() => setShowCelebration(false), 2000); // Animation duration
-  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -65,10 +61,10 @@ export function DashboardView() {
         <Button
             size="lg"
             className="w-48 h-16 rounded-full text-lg font-bold shadow-lg bg-accent hover:bg-accent/90 disabled:bg-green-500 disabled:text-white disabled:opacity-100 transition-colors duration-300"
-            onClick={handleLogActivity}
-            disabled={completedToday || showCelebration}
+            onClick={onLogActivity}
+            disabled={completedToday || isCelebrating}
         >
-            {completedToday && !showCelebration ? (
+            {completedToday && !isCelebrating ? (
                 <>
                     <Check className="mr-2 h-6 w-6" /> Completed
                 </>
@@ -77,12 +73,6 @@ export function DashboardView() {
             )}
         </Button>
       </div>
-      
-      {showCelebration && (
-        <div className="fixed inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <CelebrationCheck />
-        </div>
-      )}
     </div>
   );
 }
