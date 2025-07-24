@@ -12,7 +12,6 @@ export interface Group {
     name: string;
     createdAt: string; // ISO 8601 format
     ownerId: string;
-    memberIds: string[];
 }
 
 export interface Activity {

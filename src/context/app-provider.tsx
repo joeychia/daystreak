@@ -4,7 +4,7 @@ import React, { createContext, useState, ReactNode, useEffect, useCallback } fro
 import type { User, Activity, Group } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseUser } from "firebase/auth";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, onSnapshot, Unsubscribe, addDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, onSnapshot, Unsubscribe, addDoc } from "firebase/firestore";
 import { formatISO, isSameDay, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,7 +32,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [group, setGroup] = useState<Group | null>(null);
   const [usersInGroup, setUsersInGroup] = useState<User[]>([]);
-  const [memberIds, setMemberIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const clearAppState = useCallback(() => {
@@ -40,7 +39,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActivities([]);
     setGroup(null);
     setUsersInGroup([]);
-    setMemberIds([]);
     setLoading(false);
   }, []);
 
@@ -75,54 +73,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [clearAppState, toast]);
 
-  // Subscribe to group data
+  // Subscribe to all users, activities, and group data once a user is logged in
   useEffect(() => {
     if (!user) return;
 
-    const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
-    
-    const groupUnsubscribe = onSnapshot(groupDocRef, (groupDoc) => {
-      if (groupDoc.exists()) {
-        const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-        setGroup(groupData);
-        setMemberIds(groupData.memberIds || []);
-      } else {
-        setGroup(null);
-        setMemberIds([]);
-      }
-    }, (error) => {
-        console.error("Error fetching group:", error);
-        toast({ title: "Error", description: "Could not load group information.", variant: "destructive" });
-    });
-
-    return () => groupUnsubscribe();
-  }, [user, toast]);
-  
-  // Subscribe to users and activities data based on group members
-  useEffect(() => {
-    if (!user || memberIds.length === 0) {
-        setUsersInGroup([]);
-        setActivities([]);
-        return;
-    }
-
+    let groupUnsubscribe: Unsubscribe | undefined;
     let usersUnsubscribe: Unsubscribe | undefined;
     let activitiesUnsubscribe: Unsubscribe | undefined;
 
     try {
-        const usersQuery = query(collection(db, "users"), where('id', 'in', memberIds));
+        const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
+        groupUnsubscribe = onSnapshot(groupDocRef, (groupDoc) => {
+          if (groupDoc.exists()) {
+            const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+            setGroup(groupData);
+          } else {
+            setGroup(null);
+          }
+        }, (error) => {
+            console.error("Error fetching group:", error);
+            toast({ title: "Error", description: "Could not load group information.", variant: "destructive" });
+        });
+
+        const usersQuery = query(collection(db, "users"));
         usersUnsubscribe = onSnapshot(usersQuery, (snapshot) => {
-            const groupUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }) as User);
-            setUsersInGroup(groupUsers);
+            const allUsers = snapshot.docs.map(d => ({ id: d.id, ...d.data() }) as User);
+            setUsersInGroup(allUsers);
         }, (error) => {
             console.error("Error fetching users:", error);
             toast({ title: "Error", description: "Could not load user data.", variant: "destructive" });
         });
         
-        const activitiesQuery = query(collection(db, "activities"), where('userId', 'in', memberIds));
+        const activitiesQuery = query(collection(db, "activities"));
         activitiesUnsubscribe = onSnapshot(activitiesQuery, (snapshot) => {
-            const groupActivities = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Activity);
-            setActivities(groupActivities);
+            const allActivities = snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as Activity);
+            setActivities(allActivities);
         }, (error) => {
             console.error("Error fetching activities:", error);
             toast({ title: "Error", description: "Could not load activity data.", variant: "destructive" });
@@ -130,26 +115,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     } catch (error) {
         console.error("Error setting up data subscriptions:", error);
-        toast({ title: "Error", description: "There was a problem loading group data.", variant: "destructive" });
+        toast({ title: "Error", description: "There was a problem loading app data.", variant: "destructive" });
     }
 
     return () => {
+        if (groupUnsubscribe) groupUnsubscribe();
         if (usersUnsubscribe) usersUnsubscribe();
         if (activitiesUnsubscribe) activitiesUnsubscribe();
     }
-  }, [user, memberIds, toast]);
+  }, [user, toast]);
 
   const ensureDefaultGroupExists = async () => {
     const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
     try {
         const groupDoc = await getDoc(groupDocRef);
         if (!groupDoc.exists()) {
-          const newGroup: Group = {
-            id: SINGLE_GROUP_ID,
+          // Omit memberIds from the new group object
+          const newGroup: Omit<Group, 'id'> = {
             name: 'Day Streak Circle',
             createdAt: formatISO(new Date()),
             ownerId: 'system',
-            memberIds: []
           }
           await setDoc(groupDocRef, newGroup);
         }
@@ -158,18 +143,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toast({ title: "Setup Error", description: "Failed to create the default group.", variant: "destructive" });
     }
     return groupDocRef;
-  }
-
-  const addUserToGroup = async (firebaseUser: FirebaseUser) => {
-      const userDocRef = doc(db, "users", firebaseUser.uid);
-      const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
-      try {
-          await updateDoc(userDocRef, { groupId: SINGLE_GROUP_ID });
-          await updateDoc(groupDocRef, { memberIds: arrayUnion(firebaseUser.uid) });
-      } catch (error) {
-           console.error("Error adding user to group:", error);
-           toast({ title: "Error", description: "Failed to add you to the group.", variant: "destructive" });
-      }
   }
   
   const signIn = async (email: string, pass: string) => {
@@ -195,7 +168,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           groupId: SINGLE_GROUP_ID,
         };
         await setDoc(doc(db, "users", firebaseUser.uid), newUser);
-        await addUserToGroup(firebaseUser);
+        // No longer need to add user to group document
     } catch (error) {
         handleAuthError(error, 'signup');
         throw error;
