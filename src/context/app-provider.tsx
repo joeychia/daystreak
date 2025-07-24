@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import type { User, Activity, Group } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, User as FirebaseUser } from "firebase/auth";
-import { doc, setDoc, getDoc, collection, query, onSnapshot, Unsubscribe, addDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, onSnapshot, Unsubscribe, addDoc, updateDoc } from "firebase/firestore";
 import { formatISO, isSameDay, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -69,8 +70,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         try {
           const userDocRef = doc(db, "users", firebaseUser.uid);
           const userDoc = await getDoc(userDocRef);
+          
           if (userDoc.exists()) {
-            setUser({ id: userDoc.id, ...userDoc.data() } as User);
+            const userData = userDoc.data() as Omit<User, 'id'>;
+            
+            // Check if completionToken exists, if not, create and update it
+            if (!userData.completionToken) {
+              const newCompletionToken = generateToken();
+              await updateDoc(userDocRef, { completionToken: newCompletionToken });
+              userData.completionToken = newCompletionToken;
+            }
+
+            setUser({ id: userDoc.id, ...userData });
           }
         } catch (error) {
             console.error("Error fetching user profile:", error);
@@ -243,3 +254,5 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
+
+    
