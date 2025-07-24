@@ -4,9 +4,11 @@ import React, { createContext, useState, ReactNode, useEffect, useCallback } fro
 import type { User, Workout, Group } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, UserCredential } from "firebase/auth";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, addDoc, updateDoc, arrayUnion, onSnapshot, Unsubscribe } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, updateDoc, arrayUnion, onSnapshot, Unsubscribe } from "firebase/firestore";
 import { formatISO, isSameDay, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+
+const SINGLE_GROUP_ID = "default-group";
 
 interface AppContextType {
   user: User | null;
@@ -14,15 +16,12 @@ interface AppContextType {
   workouts: Workout[];
   group: Group | null;
   usersInGroup: User[];
-  allGroups: Group[];
   signIn: (email: string, pass: string) => Promise<UserCredential>;
   signUp: (email: string, pass: string) => Promise<void>;
   logout: () => void;
   logWorkout: () => void;
   getWorkoutsForUser: (userId: string) => Workout[];
   hasUserCompletedWorkoutToday: (userId: string) => boolean;
-  createGroup: (name: string) => Promise<void>;
-  joinGroup: (groupId: string) => Promise<void>;
 }
 
 export const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -33,7 +32,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [group, setGroup] = useState<Group | null>(null);
   const [usersInGroup, setUsersInGroup] = useState<User[]>([]);
-  const [allGroups, setAllGroups] = useState<Group[]>([]);
   const { toast } = useToast();
 
   const clearAppState = useCallback(() => {
@@ -41,26 +39,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWorkouts([]);
     setGroup(null);
     setUsersInGroup([]);
-    setAllGroups([]);
   }, []);
 
-  const fetchGroupData = useCallback(async (groupId: string) => {
-    const groupDocRef = doc(db, "groups", groupId);
+  const ensureDefaultGroupExists = async () => {
+    const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
     const groupDoc = await getDoc(groupDocRef);
-    if (groupDoc.exists()) {
-      const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-      setGroup(groupData);
-
-      // Fetch users and their workouts
-      const userDocs = await getDocs(query(collection(db, "users"), where("id", "in", groupData.memberIds)));
-      const groupUsers = userDocs.docs.map(d => d.data() as User);
-      setUsersInGroup(groupUsers);
-
-      const workoutDocs = await getDocs(query(collection(db, "workouts"), where("userId", "in", groupData.memberIds)));
-      const groupWorkouts = workoutDocs.docs.map(d => ({...d.data(), id: d.id}) as Workout);
-      setWorkouts(groupWorkouts);
+    if (!groupDoc.exists()) {
+      const newGroup: Group = {
+        id: SINGLE_GROUP_ID,
+        name: 'Fitness Circle',
+        createdAt: formatISO(new Date()),
+        ownerId: 'system',
+        memberIds: []
+      }
+      await setDoc(groupDocRef, newGroup);
     }
-  }, []);
+  }
 
   useEffect(() => {
     let groupListener: Unsubscribe | undefined;
@@ -78,53 +72,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (userDoc.exists()) {
           userData = { id: userDoc.id, ...userDoc.data() } as User;
         } else {
-          userData = {
-            id: firebaseUser.uid,
-            email: firebaseUser.email!,
-            name: firebaseUser.email!.split('@')[0],
-            avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
-          };
-          await setDoc(userDocRef, userData);
+          // This is a new user, will be handled in signUp
+           setLoading(false);
+           return;
         }
         setUser(userData);
         
-        // Listen for all groups
-        const allGroupsQuery = query(collection(db, "groups"));
-        onSnapshot(allGroupsQuery, (snapshot) => {
-            const groups = snapshot.docs.map(d => ({...d.data(), id: d.id}) as Group);
-            setAllGroups(groups);
-        });
-        
-        // Check if user is in a group and subscribe to it
-        if (userData.groupId) {
-          groupListener = onSnapshot(doc(db, "groups", userData.groupId), async (groupDoc) => {
-             if (groupDoc.exists()) {
-                const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-                setGroup(groupData);
+        // Subscribe to the single default group
+        groupListener = onSnapshot(doc(db, "groups", SINGLE_GROUP_ID), async (groupDoc) => {
+            if (groupDoc.exists()) {
+            const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+            setGroup(groupData);
 
+            if (groupData.memberIds.length > 0) {
                 // Fetch all users and workouts for the group
-                 const userDocs = await getDocs(query(collection(db, "users"), where("id", "in", groupData.memberIds)));
-                 const groupUsers = userDocs.docs.map(d => d.data() as User);
-                 setUsersInGroup(groupUsers);
+                const userDocs = await getDocs(query(collection(db, "users"), where("id", "in", groupData.memberIds)));
+                const groupUsers = userDocs.docs.map(d => d.data() as User);
+                setUsersInGroup(groupUsers);
 
-                 const workoutDocs = await getDocs(query(collection(db, "workouts"), where("userId", "in", groupData.memberIds)));
-                 const groupWorkouts = workoutDocs.docs.map(d => ({...d.data(), id: d.id}) as Workout);
-                 setWorkouts(groupWorkouts);
-             } else {
-                 // The group may have been deleted.
-                 setGroup(null);
-                 setUsersInGroup([]);
-                 setWorkouts([]);
-             }
-          });
-        } else {
-          const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", userData.id));
-          const workoutsSnapshot = await getDocs(workoutsQuery);
-          const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-          setWorkouts(fetchedWorkouts);
-          setGroup(null);
-          setUsersInGroup([]);
-        }
+                const workoutDocs = await getDocs(query(collection(db, "workouts"), where("userId", "in", groupData.memberIds)));
+                const groupWorkouts = workoutDocs.docs.map(d => ({...d.data(), id: d.id}) as Workout);
+                setWorkouts(groupWorkouts);
+            } else {
+                setUsersInGroup([]);
+                setWorkouts([]);
+            }
+            
+            } else {
+                // The group may have been deleted, or not created yet.
+                await ensureDefaultGroupExists();
+            }
+        });
 
       } else {
         clearAppState();
@@ -136,13 +114,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       unsubscribe();
       if (groupListener) groupListener();
     };
-  }, [clearAppState, fetchGroupData]);
+  }, [clearAppState]);
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
   };
   
   const signUp = async (email: string, pass: string) => {
+    await ensureDefaultGroupExists();
     const credential = await createUserWithEmailAndPassword(auth, email, pass);
     const firebaseUser = credential.user;
 
@@ -151,9 +130,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       id: firebaseUser.uid,
       email: firebaseUser.email!,
       name: firebaseUser.email!.split('@')[0],
-      avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`
+      avatarUrl: `https://i.pravatar.cc/150?u=${firebaseUser.uid}`,
+      groupId: SINGLE_GROUP_ID,
     };
     await setDoc(userDocRef, newUser);
+    
+    // Add user to the default group
+    const groupDocRef = doc(db, "groups", SINGLE_GROUP_ID);
+    await updateDoc(groupDocRef, {
+        memberIds: arrayUnion(firebaseUser.uid)
+    });
   };
 
   const logout = () => {
@@ -178,44 +164,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Optimistically update UI, real data comes from snapshot listener
     setWorkouts(prevWorkouts => [...prevWorkouts, {id: docRef.id, ...newWorkout}]);
   };
-  
-  const createGroup = async (name: string) => {
-      if (!user) return;
-      const newGroup: Omit<Group, 'id'> = {
-          name,
-          createdAt: formatISO(new Date()),
-          ownerId: user.id,
-          memberIds: [user.id]
-      }
-      const groupRef = await addDoc(collection(db, "groups"), newGroup);
-      await updateDoc(doc(db, "users", user.id), { groupId: groupRef.id });
-       toast({
-        title: "Group Created!",
-        description: `You are now the owner of "${name}".`,
-      });
-  }
-
-  const joinGroup = async (groupId: string) => {
-    if (!user) return;
-    try {
-        await updateDoc(doc(db, "groups", groupId), {
-            memberIds: arrayUnion(user.id)
-        });
-        await updateDoc(doc(db, "users", user.id), { groupId });
-         toast({
-            title: "Successfully Joined Group!",
-            description: "Start streaking with your new group members.",
-        });
-    } catch(error: any) {
-        toast({
-            title: "Failed to Join Group",
-            description: error.message || "An unexpected error occurred.",
-            variant: "destructive",
-        });
-        console.error("Error joining group:", error);
-    }
-  }
-
 
   const value = {
     user,
@@ -223,15 +171,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     workouts,
     group,
     usersInGroup,
-    allGroups,
     signIn,
     signUp,
     logout,
     logWorkout,
     getWorkoutsForUser,
     hasUserCompletedWorkoutToday,
-    createGroup,
-    joinGroup,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
