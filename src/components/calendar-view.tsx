@@ -55,11 +55,6 @@ export function CalendarView({ userId }: CalendarViewProps) {
                 }
             }}
             styles={{
-                day_selected: { 
-                    backgroundColor: 'transparent',
-                    color: 'hsl(var(--foreground))',
-                    fontWeight: 'normal',
-                },
                  day: {
                     height: '2.5rem',
                     width: '2.5rem',
