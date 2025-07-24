@@ -59,11 +59,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let groupListener: Unsubscribe | undefined;
+    let workoutsListener: Unsubscribe | undefined;
     
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       
       if (groupListener) groupListener();
+      if (workoutsListener) workoutsListener();
 
       if (firebaseUser) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
@@ -73,7 +75,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setUser({ id: userDoc.id, ...userDoc.data() } as User);
         }
         
-        // Everyone is in the same group.
         const groupDocRef = await ensureDefaultGroupExists();
 
         groupListener = onSnapshot(groupDocRef, async (groupDoc) => {
@@ -81,17 +82,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
                 setGroup(groupData);
 
+                if (workoutsListener) workoutsListener();
+
                 if (groupData.memberIds.length > 0) {
                     const usersQuery = query(collection(db, "users"), where('id', 'in', groupData.memberIds));
-                    const workoutsQuery = query(collection(db, "workouts"), where('userId', 'in', groupData.memberIds));
-
-                    const [userDocs, workoutDocs] = await Promise.all([getDocs(usersQuery), getDocs(workoutsQuery)]);
-                    
+                    const userDocs = await getDocs(usersQuery);
                     const groupUsers = userDocs.docs.map(d => ({id: d.id, ...d.data()}) as User);
                     setUsersInGroup(groupUsers);
 
-                    const groupWorkouts = workoutDocs.docs.map(d => ({...d.data(), id: d.id}) as Workout);
-                    setWorkouts(groupWorkouts);
+                    const workoutsQuery = query(collection(db, "workouts"), where('userId', 'in', groupData.memberIds));
+                    workoutsListener = onSnapshot(workoutsQuery, (snapshot) => {
+                      const groupWorkouts = snapshot.docs.map(d => ({...d.data(), id: d.id}) as Workout);
+                      setWorkouts(groupWorkouts);
+                    });
+
                 } else {
                     setUsersInGroup([]);
                     setWorkouts([]);
@@ -108,8 +112,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       unsubscribe();
       if (groupListener) groupListener();
+      if (workoutsListener) workoutsListener();
     };
-  }, [clearAppState, toast]);
+  }, [clearAppState]);
 
   const signIn = async (email: string, pass: string) => {
     return signInWithEmailAndPassword(auth, email, pass);
@@ -155,9 +160,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       userId: user.id,
       date: formatISO(new Date()),
     };
-    const docRef = await addDoc(collection(db, "workouts"), newWorkout);
-    // Optimistically update UI, real data comes from snapshot listener
-    setWorkouts(prevWorkouts => [...prevWorkouts, {id: docRef.id, ...newWorkout}]);
+    // The onSnapshot listener will automatically update the UI.
+    // No need to optimistically update here anymore.
+    await addDoc(collection(db, "workouts"), newWorkout);
   };
 
   const value = {
