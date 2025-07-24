@@ -5,7 +5,7 @@ import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { isSameDay, parseISO } from 'date-fns';
-import { CheckCircle2 } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CalendarViewProps {
@@ -43,12 +43,12 @@ export function CalendarView({ userId }: CalendarViewProps) {
                     const isCompleted = activityDates.some(d => isSameDay(d, date));
                     return (
                         <div className={cn(
-                            "relative h-8 w-8 flex items-center justify-center rounded-full",
-                            isCompleted && "bg-primary/20"
+                            "relative h-9 w-9 flex items-center justify-center rounded-full",
+                            isCompleted && "bg-primary text-primary-foreground"
                         )}>
-                            <span className={cn(isCompleted && "font-bold text-primary")}>{date.getDate()}</span>
+                            <span>{date.getDate()}</span>
                             {isCompleted && (
-                                <CheckCircle2 className="absolute -bottom-1 -right-1 h-4 w-4 text-primary bg-background rounded-full" />
+                                <Check className="absolute -bottom-1 -right-1 h-4 w-4 bg-background text-primary rounded-full p-0.5" />
                             )}
                         </div>
                     );
@@ -63,6 +63,7 @@ export function CalendarView({ userId }: CalendarViewProps) {
                  day: {
                     height: '2.5rem',
                     width: '2.5rem',
+                    padding: 0,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
