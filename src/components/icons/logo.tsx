@@ -4,8 +4,8 @@ export function Logo(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 200 50"
-      width="150"
+      viewBox="0 0 170 50"
+      width="128"
       height="37.5"
       {...props}
     >
@@ -23,7 +23,7 @@ export function Logo(props: React.SVGProps<SVGSVGElement>) {
         fontWeight="bold"
         fill="url(#logo-gradient)"
       >
-        Fitness Circle
+        Day Streak
       </text>
     </svg>
   );

@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Fitness Circle',
+  title: 'Day Streak',
   description: 'Workout with your friends and build a streak together.',
 };
 
