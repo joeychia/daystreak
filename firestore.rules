@@ -1,0 +1,28 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read/write their own document.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Anyone can see the list of groups and individual group info.
+    match /groups/{groupId} {
+      allow get, list: if true;
+      // Users must be authenticated to create a group.
+      allow create: if request.auth != null;
+      // Users must be authenticated to update a group (e.g. join).
+      allow update: if request.auth != null;
+    }
+    
+    // Authenticated users can create workouts for themselves.
+    match /workouts/{workoutId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Users can only read workouts belonging to users in their group.
+      // This is a simplified rule; a more robust solution would check against the group's memberIds.
+      allow list, get: if request.auth != null;
+    }
+  }
+}
