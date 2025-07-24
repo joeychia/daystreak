@@ -6,20 +6,30 @@ import { Calendar } from '@/components/ui/calendar';
 import { isSameDay, parseISO } from 'date-fns';
 import { CheckCircle2 } from 'lucide-react';
 
-export function CalendarView() {
-  const { user, getWorkoutsForUser } = useApp();
+interface CalendarViewProps {
+  userId?: string;
+}
 
-  if (!user) return null;
+export function CalendarView({ userId }: CalendarViewProps) {
+  const { user: loggedInUser, getWorkoutsForUser, getUserById } = useApp();
 
-  const userWorkouts = getWorkoutsForUser(user.id);
+  const targetUserId = userId || loggedInUser?.id;
+  const targetUser = targetUserId ? getUserById(targetUserId) : null;
+  
+  if (!targetUser) return null;
+
+  const userWorkouts = getWorkoutsForUser(targetUser.id);
   const workoutDates = userWorkouts.map(w => parseISO(w.date));
+  
+  const cardTitle = userId ? `Workout Calendar` : 'Your Workout Calendar';
+  const cardDescription = userId ? `A look at ${targetUser.name}'s hard work.` : 'A look back at all your hard work.';
 
   return (
     <div className="p-4 md:p-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-headline">Your Workout Calendar</CardTitle>
-          <CardDescription>A look back at all your hard work.</CardDescription>
+          <CardTitle className="font-headline">{cardTitle}</CardTitle>
+          <CardDescription>{cardDescription}</CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center">
           <Calendar

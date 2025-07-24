@@ -11,10 +11,13 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Share2 } from 'lucide-react';
+import { CalendarView } from './calendar-view';
+import type { User } from '@/lib/types';
 
 export function GroupView() {
   const { user, group, users, getWorkoutsForUser, getUserById, createGroup } = useApp();
   const { toast } = useToast();
+  const [selectedMember, setSelectedMember] = useState<User | null>(null);
 
   if (!user) return null;
 
@@ -56,20 +59,33 @@ export function GroupView() {
           <h3 className="font-bold mb-4 text-lg">Leaderboard</h3>
           <ul className="space-y-4">
             {leaderboard.map((member, index) => (
-              <li key={member.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <span className="font-bold text-lg w-6">{index + 1}</span>
-                  <Avatar>
-                    <AvatarImage src={member.avatarUrl} alt={member.name} />
-                    <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{member.name}</span>
-                </div>
-                <div className="flex items-center gap-2 text-orange-500">
-                  <span className="font-bold text-lg">{member.streak}</span>
-                  <FlameSolidIcon className="w-5 h-5" />
-                </div>
-              </li>
+              <Dialog key={member.id} onOpenChange={(open) => !open && setSelectedMember(null)}>
+                <DialogTrigger asChild>
+                  <li 
+                    className="flex items-center justify-between cursor-pointer hover:bg-muted/50 p-2 rounded-lg"
+                    onClick={() => setSelectedMember(member as User)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="font-bold text-lg w-6">{index + 1}</span>
+                      <Avatar>
+                        <AvatarImage src={member.avatarUrl} alt={member.name} />
+                        <AvatarFallback>{member.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{member.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-orange-500">
+                      <span className="font-bold text-lg">{member.streak}</span>
+                      <FlameSolidIcon className="w-5 h-5" />
+                    </div>
+                  </li>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{member.name}'s Calendar</DialogTitle>
+                  </DialogHeader>
+                  <CalendarView userId={member.id} />
+                </DialogContent>
+              </Dialog>
             ))}
           </ul>
         </CardContent>
