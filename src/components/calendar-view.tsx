@@ -33,7 +33,7 @@ export function CalendarView() {
                         <div className="relative h-full w-full flex items-center justify-center">
                             <span>{date.getDate()}</span>
                             {isCompleted && (
-                                <CheckCircle2 className="absolute bottom-0 right-0 h-3 w-3 text-primary" />
+                                <CheckCircle2 className="absolute bottom-0 right-0 h-3 w-3 text-green-500" />
                             )}
                         </div>
                     );
@@ -41,9 +41,9 @@ export function CalendarView() {
             }}
             styles={{
                 day_selected: { 
-                    backgroundColor: 'hsl(var(--primary) / 0.2)',
-                    color: 'hsl(var(--primary-foreground))',
-                    fontWeight: 'bold',
+                    backgroundColor: 'transparent',
+                    color: 'hsl(var(--foreground))',
+                    fontWeight: 'normal',
                 },
                  day: {
                     position: 'relative',
