@@ -1,27 +1,21 @@
 'use client';
 
 import React, { createContext, useState, ReactNode, useEffect } from 'react';
-import type { User, Group, Workout } from '@/lib/types';
+import type { User, Workout } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, UserCredential } from "firebase/auth";
-import { doc, setDoc, getDoc, collection, query, where, getDocs, serverTimestamp, addDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, setDoc, getDoc, collection, query, where, getDocs, addDoc } from "firebase/firestore";
 import { formatISO, isSameDay, parseISO } from 'date-fns';
 
 interface AppContextType {
   user: User | null;
   loading: boolean;
-  group: Group | null;
-  allGroups: Group[];
-  users: User[];
   workouts: Workout[];
   signIn: (email: string, pass: string) => Promise<UserCredential>;
   signUp: (email: string, pass: string) => Promise<void>;
   logout: () => void;
   logWorkout: () => void;
-  createGroup: (name: string) => Promise<Group>;
-  joinGroup: (groupId: string) => Promise<Group | null>;
   getWorkoutsForUser: (userId: string) => Workout[];
-  getUserById: (userId: string) => User | undefined;
   hasUserCompletedWorkoutToday: (userId: string) => boolean;
 }
 
@@ -30,9 +24,6 @@ export const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [group, setGroup] = useState<Group | null>(null);
-  const [allGroups, setAllGroups] = useState<Group[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   useEffect(() => {
@@ -57,54 +48,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         setUser(userData);
         
-        try {
-          const allGroupsQuery = query(collection(db, "groups"));
-          const allGroupsSnapshot = await getDocs(allGroupsQuery);
-          const fetchedAllGroups = allGroupsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Group[];
-          setAllGroups(fetchedAllGroups);
-        } catch (error) {
-          console.error("Could not fetch all groups:", error);
-          setAllGroups([]);
-        }
+        const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", userData.id));
+        const workoutsSnapshot = await getDocs(workoutsQuery);
+        const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
+        setWorkouts(fetchedWorkouts);
 
-        const groupsRef = collection(db, "groups");
-        const q = query(groupsRef, where("memberIds", "array-contains", userData.id));
-        const groupSnapshot = await getDocs(q);
-
-        if (!groupSnapshot.empty) {
-            const groupDoc = groupSnapshot.docs[0];
-            const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
-            setGroup(groupData);
-            
-            const fetchedUsers: User[] = [];
-            for(const memberId of groupData.memberIds) {
-              const userRef = doc(db, 'users', memberId);
-              const userSnap = await getDoc(userRef);
-              if (userSnap.exists()) {
-                 fetchedUsers.push({ id: userSnap.id, ...userSnap.data() } as User);
-              }
-            }
-            setUsers(fetchedUsers);
-
-
-            const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", groupData.memberIds));
-            const workoutsSnapshot = await getDocs(workoutsQuery);
-            const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-            setWorkouts(fetchedWorkouts);
-        } else {
-            setGroup(null);
-            setUsers([userData]);
-            const workoutsQuery = query(collection(db, "workouts"), where("userId", "==", userData.id));
-            const workoutsSnapshot = await getDocs(workoutsQuery);
-            const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-            setWorkouts(fetchedWorkouts);
-        }
       } else {
         setUser(null);
-        setGroup(null);
-        setUsers([]);
         setWorkouts([]);
-        setAllGroups([]);
       }
       setLoading(false);
     });
@@ -134,8 +85,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     auth.signOut();
   };
   
-  const getUserById = (userId: string) => users.find(u => u.id === userId);
-
   const getWorkoutsForUser = (userId: string) => workouts.filter(w => w.userId === userId);
 
   const hasUserCompletedWorkoutToday = (userId: string) => {
@@ -153,80 +102,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const docRef = await addDoc(collection(db, "workouts"), newWorkout);
     setWorkouts(prevWorkouts => [...prevWorkouts, {id: docRef.id, ...newWorkout}]);
   };
-  
-  const createGroup = async (name: string): Promise<Group> => {
-    if (!user) throw new Error("User must be logged in to create a group.");
-    
-    const newGroupData = {
-      name,
-      createdAt: serverTimestamp(),
-      memberIds: [user.id],
-    };
-    const docRef = await addDoc(collection(db, "groups"), newGroupData);
-    const newGroup: Group = {
-      id: docRef.id,
-      name,
-      createdAt: new Date().toISOString(),
-      memberIds: [user.id]
-    }
-    setGroup(newGroup);
-    setUsers([user]);
-    return newGroup;
-  };
-
-  const joinGroup = async (groupId: string): Promise<Group | null> => {
-    if (!user) throw new Error("User must be logged in to join a group.");
-    
-    const groupDocRef = doc(db, "groups", groupId);
-    const groupDoc = await getDoc(groupDocRef);
-    if (!groupDoc.exists()) return null;
-
-    const groupToJoin = { id: groupDoc.id, ...groupDoc.data() } as Group;
-
-    if (groupToJoin.memberIds.includes(user.id)) return groupToJoin;
-
-    await updateDoc(groupDocRef, {
-      memberIds: arrayUnion(user.id)
-    });
-    
-    const groupSnapshot = await getDoc(doc(db, "groups", groupId));
-    const updatedGroup = { id: groupSnapshot.id, ...groupSnapshot.data() } as Group;
-
-    const fetchedUsers: User[] = [];
-    for(const memberId of updatedGroup.memberIds) {
-        const userRef = doc(db, 'users', memberId);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-            fetchedUsers.push({ id: userSnap.id, ...userSnap.data() } as User);
-        }
-    }
-
-    const workoutsQuery = query(collection(db, "workouts"), where("userId", "in", updatedGroup.memberIds));
-    const workoutsSnapshot = await getDocs(workoutsQuery);
-    const fetchedWorkouts = workoutsSnapshot.docs.map(d => ({...d.data(), id: d.id})) as Workout[];
-
-    setGroup(updatedGroup);
-    setUsers(fetchedUsers);
-    setWorkouts(fetchedWorkouts);
-    
-    return updatedGroup;
-  };
 
   const value = {
     user,
     loading,
-    group,
-    allGroups,
-    users,
     workouts,
     signIn,
     signUp,
     logout,
     logWorkout,
-    createGroup,
-    joinGroup,
     getWorkoutsForUser,
-    getUserById,
     hasUserCompletedWorkoutToday,
   };
 

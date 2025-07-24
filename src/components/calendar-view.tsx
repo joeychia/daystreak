@@ -4,21 +4,14 @@
 import { useApp } from '@/hooks/use-app';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import type { User } from '@/lib/types';
 import { isSameDay, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 import type { DayContentProps } from 'react-day-picker';
 
-interface CalendarViewProps {
-  userId?: string;
-}
+function DayContent({ date }: DayContentProps) {
+  const { workouts } = useApp();
 
-function DayContent({ date, activeModifiers }: DayContentProps) {
-  const { getWorkoutsForUser, user: loggedInUser, hasUserCompletedWorkoutToday } = useApp();
-  // This is a bit inefficient to call in a loop, but for the scope of this calendar it is acceptable.
-  // For larger scale apps, consider moving this logic higher up.
-  const workouts = getWorkoutsForUser(loggedInUser!.id);
   const isCompleted = workouts.some(workout => isSameDay(parseISO(workout.date), date));
 
   return (
@@ -30,19 +23,15 @@ function DayContent({ date, activeModifiers }: DayContentProps) {
 }
 
 
-export function CalendarView({ userId }: CalendarViewProps) {
-  const { user: loggedInUser, getUserById, getWorkoutsForUser } = useApp();
-
-  const targetUserId = userId || loggedInUser?.id;
-  const targetUser = targetUserId ? getUserById(targetUserId) : null;
-  const userWorkouts = targetUserId ? getWorkoutsForUser(targetUserId) : [];
+export function CalendarView() {
+  const { user, workouts } = useApp();
   
-  if (!targetUser) return null;
+  if (!user) return null;
 
-  const cardTitle = userId ? `Activity Calendar` : 'Your Activity Calendar';
-  const cardDescription = userId ? `A look at ${targetUser.name}'s progress.` : 'A look back at your progress.';
+  const cardTitle = 'Your Activity Calendar';
+  const cardDescription = 'A look back at your progress.';
 
-  const completedDays = userWorkouts.map(workout => parseISO(workout.date));
+  const completedDays = workouts.map(workout => parseISO(workout.date));
 
   return (
     <div className="p-4 md:p-6">
