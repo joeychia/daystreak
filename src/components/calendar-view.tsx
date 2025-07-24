@@ -36,33 +36,8 @@ export function CalendarView({ userId }: CalendarViewProps) {
         <CardContent className="flex justify-center">
           <Calendar
             mode="multiple"
+            selected={activityDates}
             className="p-0"
-            components={{
-                DayContent: ({ date, ...props }) => {
-                    const isCompleted = activityDates.some(d => isSameDay(d, date));
-                    return (
-                        <div className={cn(
-                            "relative h-9 w-9 flex items-center justify-center rounded-full",
-                            isCompleted && "bg-primary text-primary-foreground"
-                        )}>
-                            <span>{date.getDate()}</span>
-                            {isCompleted && (
-                                <Check className="absolute -bottom-1 -right-1 h-4 w-4 bg-background text-primary rounded-full p-0.5" />
-                            )}
-                        </div>
-                    );
-                }
-            }}
-            styles={{
-                 day: {
-                    height: '2.5rem',
-                    width: '2.5rem',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                 }
-            }}
           />
         </CardContent>
       </Card>
